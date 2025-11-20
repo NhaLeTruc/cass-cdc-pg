@@ -1,0 +1,133 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Credentials and secrets (NEVER COMMIT THESE!)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+.env
+.env.*
+!.env.example
+!.env.*.example
+secrets/
+credentials/
+*.credentials
+*.secrets
+config/prod/*.yml
+config/prod/*.yaml
+config/prod/*.json
+!config/prod/*.example
+vault-keys.json
+vault-token
+.vault-token
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Docker
+docker-compose.override.yml
+
+# Monitoring data
+monitoring/prometheus/data/
+monitoring/grafana/data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# CI/CD
+.github/workflows/secrets.yml
+
+# Secrets baseline (detect-secrets)
+.secrets.baseline
+
+# Redis persistence
+*.rdb
+*.aof
+dump.rdb
+appendonly.aof
+
+# Kafka data
+kafka-logs/
+
+# Test outputs
+.testcontainers/
+test-results/
+test-reports/
+
+# Large files
+*.tar.gz
+*.zip
+*.tar
+*.jar
+*.war
+*.ear
