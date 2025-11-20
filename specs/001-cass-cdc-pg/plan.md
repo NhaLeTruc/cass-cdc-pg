@@ -508,27 +508,244 @@ All constitution principles satisfied:
 7. **Troubleshooting**: Common issues and solutions
 8. **Development Tasks**: Add tables, view Kafka messages, simulate failures
 
-## Phase 2: Task Generation (NOT STARTED)
+## Phase 2: Task Generation ✅ COMPLETE
 
-**Status**: NOT STARTED (use `/speckit.tasks` command)
+**Status**: COMPLETE (tasks.md generated)
 
-**Expected Output**: `tasks.md` with:
-- Dependency-ordered implementation tasks
-- Test tasks before implementation tasks (TDD)
-- Each task with clear acceptance criteria
-- Estimated effort per task
-- Critical path identification
+**Output**: [tasks.md](/home/bob/WORK/cass-cdc-pg/specs/001-cass-cdc-pg/tasks.md)
 
-**Task Categories** (anticipated):
+**Task Categories** (107 total tasks):
 1. **Infrastructure Setup**: Docker Compose, Makefile, CI/CD
 2. **Data Models**: Pydantic models for all entities
 3. **Repositories**: Cassandra, PostgreSQL, Vault data access
-4. **Services**: Type mapper, schema service, DLQ service
-5. **API**: FastAPI app with health, metrics, DLQ endpoints
+4. **Services**: Type mapper, schema service, DLQ service, reconciliation service
+5. **API**: FastAPI app with health, metrics, DLQ, reconciliation endpoints
 6. **Monitoring**: Prometheus metrics, structlog config, OpenTelemetry
 7. **Connectors**: Debezium source, JDBC sink configurations
-8. **Tests**: Unit → Integration → Contract → E2E
-9. **Documentation**: README, architecture diagrams, runbooks
+8. **Reconciliation**: Hourly automated and manual reconciliation with alerting
+9. **Tests**: Unit → Integration → Contract → E2E
+10. **Documentation**: README, architecture diagrams, runbooks
+
+## Phase 3: Reconciliation Feature Extension
+
+**Status**: ADDED (extension to original plan)
+
+### Reconciliation Requirements
+
+**Purpose**: Ensure data consistency between Cassandra (source) and PostgreSQL (target) through periodic validation
+
+**Reconciliation Types**:
+1. **Hourly Automated Reconciliation**: Scheduled job runs every hour
+2. **Manual On-Demand Reconciliation**: Triggered via REST API
+
+**Validation Strategies**:
+- **Row Count Validation**: Compare total record counts per table
+- **Checksum Validation**: Compare row checksums for data integrity
+- **Timestamp Range Validation**: Validate records modified in time windows
+- **Sample Validation**: Random sampling for deep data comparison
+
+**Alerting Integration**:
+- **Prometheus Metrics**: Expose reconciliation results as metrics
+- **AlertManager Rules**: Define alert conditions for sync failures
+- **Severity Levels**: Warning (minor drift <1%), Critical (major drift ≥1%)
+
+### Reconciliation Data Model
+
+**ReconciliationJob Entity**:
+- `job_id` (UUID): Unique reconciliation job identifier
+- `table_name` (str): Source/target table name
+- `job_type` (enum): HOURLY_SCHEDULED, MANUAL_ONDEMAND
+- `validation_strategy` (enum): ROW_COUNT, CHECKSUM, TIMESTAMP_RANGE, SAMPLE
+- `started_at` (timestamp): Job start timestamp
+- `completed_at` (timestamp): Job completion timestamp
+- `status` (enum): RUNNING, COMPLETED, FAILED
+- `cassandra_row_count` (int): Total rows in Cassandra
+- `postgres_row_count` (int): Total rows in PostgreSQL
+- `mismatch_count` (int): Number of mismatched records
+- `drift_percentage` (float): Percentage of records out of sync
+- `validation_errors` (JSONB): Detailed error information
+- `alert_fired` (bool): Whether alert was sent to AlertManager
+
+**ReconciliationMismatch Entity**:
+- `mismatch_id` (UUID): Unique mismatch identifier
+- `job_id` (UUID): Reference to ReconciliationJob
+- `table_name` (str): Table with mismatch
+- `primary_key_value` (str): Record identifier
+- `mismatch_type` (enum): MISSING_IN_POSTGRES, MISSING_IN_CASSANDRA, DATA_MISMATCH
+- `cassandra_checksum` (str): Checksum of Cassandra record
+- `postgres_checksum` (str): Checksum of PostgreSQL record
+- `detected_at` (timestamp): When mismatch was detected
+- `resolution_status` (enum): PENDING, AUTO_RESOLVED, MANUAL_RESOLVED, IGNORED
+
+### Reconciliation Service Architecture
+
+**Components**:
+1. **ReconciliationScheduler**: APScheduler for hourly jobs
+2. **ReconciliationEngine**: Core validation logic (row count, checksum, sampling)
+3. **ReconciliationRepository**: Store job results in PostgreSQL control tables
+4. **AlertService**: Send alerts to Prometheus/AlertManager
+5. **ReconciliationAPI**: REST endpoints for manual triggers and status queries
+
+**Reconciliation Workflow**:
+```
+1. Scheduler triggers job (hourly) OR API triggers (manual)
+2. ReconciliationEngine:
+   a. Query Cassandra table metadata (row count, last modified)
+   b. Query PostgreSQL table metadata (row count, last modified)
+   c. Compare row counts
+   d. If mismatch > threshold:
+      - Generate checksum for sample records
+      - Identify specific mismatched records
+      - Store mismatches in _cdc_reconciliation_mismatches table
+3. Store job results in _cdc_reconciliation_jobs table
+4. Update Prometheus metrics:
+   - cdc_reconciliation_drift_percentage (gauge by table)
+   - cdc_reconciliation_mismatches_total (counter by table)
+   - cdc_reconciliation_jobs_completed_total (counter by status)
+5. If drift_percentage >= warning_threshold (1%):
+   - Send alert to AlertManager via Prometheus pushgateway
+   - Alert includes: table, drift %, mismatch count, job_id
+6. Return reconciliation report
+```
+
+### Prometheus Metrics for Reconciliation
+
+**Metrics Exposed**:
+- `cdc_reconciliation_drift_percentage{table}` (gauge): Percentage of records out of sync
+- `cdc_reconciliation_cassandra_rows{table}` (gauge): Total rows in Cassandra table
+- `cdc_reconciliation_postgres_rows{table}` (gauge): Total rows in PostgreSQL table
+- `cdc_reconciliation_mismatches_total{table,type}` (counter): Count of mismatches by type
+- `cdc_reconciliation_jobs_completed_total{table,status}` (counter): Reconciliation job outcomes
+- `cdc_reconciliation_duration_seconds{table}` (histogram): Time to complete reconciliation
+
+### AlertManager Rules
+
+**Alert Definitions** (in `docker/monitoring/prometheus-alerts.yml`):
+
+```yaml
+- alert: ReconciliationDriftWarning
+  expr: cdc_reconciliation_drift_percentage > 1 and cdc_reconciliation_drift_percentage <= 5
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "CDC reconciliation drift detected on {{ $labels.table }}"
+    description: "Table {{ $labels.table }} has {{ $value }}% drift between Cassandra and PostgreSQL"
+    runbook: "Check _cdc_reconciliation_jobs and _cdc_reconciliation_mismatches tables for details"
+
+- alert: ReconciliationDriftCritical
+  expr: cdc_reconciliation_drift_percentage > 5
+  for: 2m
+  labels:
+    severity: critical
+  annotations:
+    summary: "CRITICAL: High CDC reconciliation drift on {{ $labels.table }}"
+    description: "Table {{ $labels.table }} has {{ $value }}% drift - possible pipeline failure"
+    runbook: "Investigate pipeline health, check DLQ, review Kafka Connect logs"
+
+- alert: ReconciliationJobFailed
+  expr: increase(cdc_reconciliation_jobs_completed_total{status="failed"}[1h]) > 3
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Multiple reconciliation jobs failing"
+    description: "{{ $value }} reconciliation jobs failed in the last hour"
+    runbook: "Check reconciliation service logs and database connectivity"
+```
+
+### REST API Endpoints for Reconciliation
+
+**New Endpoints** (in `contracts/rest-api.md`):
+
+1. **POST /reconciliation/trigger**
+   - Trigger manual reconciliation for specific table(s)
+   - Request: `{"tables": ["users", "orders"], "validation_strategy": "CHECKSUM"}`
+   - Response: `{"job_ids": ["uuid1", "uuid2"], "status": "RUNNING"}`
+
+2. **GET /reconciliation/jobs**
+   - Query reconciliation job history
+   - Query params: `?table=users&status=COMPLETED&from=2025-11-01&to=2025-11-20`
+   - Response: Paginated list of ReconciliationJob objects
+
+3. **GET /reconciliation/jobs/{job_id}**
+   - Get detailed reconciliation job results
+   - Response: ReconciliationJob with mismatches list
+
+4. **GET /reconciliation/mismatches**
+   - Query mismatched records across all jobs
+   - Query params: `?table=users&mismatch_type=DATA_MISMATCH&resolution_status=PENDING`
+   - Response: Paginated list of ReconciliationMismatch objects
+
+5. **POST /reconciliation/mismatches/{mismatch_id}/resolve**
+   - Mark mismatch as resolved or ignored
+   - Request: `{"resolution_status": "MANUAL_RESOLVED", "resolution_notes": "Manually synced"}`
+   - Response: `{"status": "success"}`
+
+### PostgreSQL Control Tables
+
+**New Tables**:
+
+```sql
+CREATE TABLE _cdc_reconciliation_jobs (
+    job_id UUID PRIMARY KEY,
+    table_name VARCHAR(255) NOT NULL,
+    job_type VARCHAR(50) NOT NULL,
+    validation_strategy VARCHAR(50) NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ,
+    status VARCHAR(50) NOT NULL,
+    cassandra_row_count BIGINT,
+    postgres_row_count BIGINT,
+    mismatch_count INTEGER,
+    drift_percentage DECIMAL(5,2),
+    validation_errors JSONB,
+    alert_fired BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_reconciliation_jobs_table_status ON _cdc_reconciliation_jobs(table_name, status);
+CREATE INDEX idx_reconciliation_jobs_started_at ON _cdc_reconciliation_jobs(started_at);
+
+CREATE TABLE _cdc_reconciliation_mismatches (
+    mismatch_id UUID PRIMARY KEY,
+    job_id UUID REFERENCES _cdc_reconciliation_jobs(job_id),
+    table_name VARCHAR(255) NOT NULL,
+    primary_key_value TEXT NOT NULL,
+    mismatch_type VARCHAR(50) NOT NULL,
+    cassandra_checksum VARCHAR(64),
+    postgres_checksum VARCHAR(64),
+    cassandra_data JSONB,
+    postgres_data JSONB,
+    detected_at TIMESTAMPTZ NOT NULL,
+    resolution_status VARCHAR(50) DEFAULT 'PENDING',
+    resolution_notes TEXT,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_reconciliation_mismatches_job_id ON _cdc_reconciliation_mismatches(job_id);
+CREATE INDEX idx_reconciliation_mismatches_table_status ON _cdc_reconciliation_mismatches(table_name, resolution_status);
+```
+
+### Scheduler Configuration
+
+**APScheduler Setup**:
+- **Trigger**: Hourly interval (every 60 minutes)
+- **Timezone**: UTC
+- **Concurrency**: Max 3 concurrent reconciliation jobs
+- **Job Store**: PostgreSQL (_apscheduler_jobs table)
+- **Executor**: ThreadPoolExecutor (max 10 threads)
+
+**Configuration** (in `src/config/settings.py`):
+```python
+RECONCILIATION_ENABLED: bool = True
+RECONCILIATION_INTERVAL_MINUTES: int = 60
+RECONCILIATION_DRIFT_WARNING_THRESHOLD: float = 1.0  # 1%
+RECONCILIATION_DRIFT_CRITICAL_THRESHOLD: float = 5.0  # 5%
+RECONCILIATION_SAMPLE_SIZE: int = 1000  # for checksum validation
+RECONCILIATION_TABLES: List[str] = []  # empty = all tables
+```
 
 ## Architecture Diagram
 
