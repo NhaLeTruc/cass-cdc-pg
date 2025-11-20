@@ -1,0 +1,408 @@
+openapi: 3.0.3
+info:
+  title: CDC Pipeline Admin API
+  description: |
+    REST API for monitoring and managing the Cassandra-to-PostgreSQL CDC pipeline.
+    Provides health checks, operational controls, and metrics access.
+  version: 1.0.0
+  contact:
+    name: CDC Pipeline Team
+    url: https://github.com/your-org/cass-cdc-pg
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+  - url: https://cdc-pipeline.example.com/api/v1
+    description: Production
+
+tags:
+  - name: Health
+    description: Health check endpoints for liveness and readiness probes
+  - name: Admin
+    description: Administrative operations (pause, resume, rebalance)
+  - name: Metrics
+    description: Pipeline metrics and statistics
+  - name: Workers
+    description: Worker management and status
+
+paths:
+  /health/liveness:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: Returns 200 if the application is running (used by Kubernetes liveness probe)
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Application is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Application is not healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health/readiness:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: |
+        Returns 200 if the application can accept traffic (Kafka, PostgreSQL, Redis accessible).
+        Used by Kubernetes readiness probe.
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Application is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Application is not ready (dependencies unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/pipeline/pause:
+    post:
+      tags:
+        - Admin
+      summary: Pause pipeline processing
+      description: |
+        Stops consuming from Kafka topics. Workers drain in-flight batches, commit checkpoints, then enter PAUSED state.
+        Events continue accumulating in Kafka during pause.
+      operationId: pausePipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PauseRequest'
+      responses:
+        '200':
+          description: Pipeline paused successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+        '400':
+          description: Invalid request (pipeline already paused)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/pipeline/resume:
+    post:
+      tags:
+        - Admin
+      summary: Resume pipeline processing
+      description: Workers resume consuming from last committed Kafka offsets
+      operationId: resumePipeline
+      responses:
+        '200':
+          description: Pipeline resumed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+        '400':
+          description: Invalid request (pipeline not paused)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/workers/rebalance:
+    post:
+      tags:
+        - Admin
+      summary: Trigger worker rebalancing
+      description: |
+        Forces redistribution of Kafka partitions across active workers.
+        Useful after scaling up/down worker count.
+      operationId: rebalanceWorkers
+      responses:
+        '202':
+          description: Rebalancing initiated (asynchronous operation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResponse'
+
+  /workers:
+    get:
+      tags:
+        - Workers
+      summary: List all workers
+      description: Returns list of active workers with status and assigned partitions
+      operationId: listWorkers
+      responses:
+        '200':
+          description: List of workers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkerStatus'
+                  total_count:
+                    type: integer
+                    description: Total number of workers
+
+  /workers/{worker_id}:
+    get:
+      tags:
+        - Workers
+      summary: Get worker details
+      description: Returns detailed information about a specific worker
+      operationId: getWorker
+      parameters:
+        - name: worker_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Worker ID (hostname-PID)
+      responses:
+        '200':
+          description: Worker details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerDetails'
+        '404':
+          description: Worker not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /metrics/pipeline:
+    get:
+      tags:
+        - Metrics
+      summary: Get pipeline-wide metrics
+      description: Returns aggregated metrics across all workers
+      operationId: getPipelineMetrics
+      responses:
+        '200':
+          description: Pipeline metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineMetrics'
+
+  /metrics/tables/{table_name}:
+    get:
+      tags:
+        - Metrics
+      summary: Get table-specific metrics
+      description: Returns metrics for a specific Cassandra table
+      operationId: getTableMetrics
+      parameters:
+        - name: table_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Fully qualified table name (keyspace.table)
+      responses:
+        '200':
+          description: Table metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableMetrics'
+        '404':
+          description: Table not found or not monitored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+          description: Pipeline version
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        timestamp:
+          type: string
+          format: date-time
+        dependencies:
+          type: object
+          properties:
+            kafka:
+              type: boolean
+            postgres:
+              type: boolean
+            redis:
+              type: boolean
+          required:
+            - kafka
+            - postgres
+            - redis
+
+    PauseRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Reason for pausing (logged for audit)
+          example: "Emergency maintenance on PostgreSQL"
+        graceful_timeout_seconds:
+          type: integer
+          description: Max time to wait for in-flight batches to drain (default 60s)
+          default: 60
+
+    AdminResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        operation_id:
+          type: string
+          description: Unique ID for tracking async operations
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        detail:
+          type: string
+          description: Detailed error description
+        timestamp:
+          type: string
+          format: date-time
+
+    WorkerStatus:
+      type: object
+      properties:
+        worker_id:
+          type: string
+        hostname:
+          type: string
+        status:
+          type: string
+          enum: [STARTING, RUNNING, DRAINING, STOPPED]
+        assigned_partitions:
+          type: array
+          items:
+            type: string
+          description: List of table:partition assignments
+        last_heartbeat:
+          type: string
+          format: date-time
+
+    WorkerDetails:
+      allOf:
+        - $ref: '#/components/schemas/WorkerStatus'
+        - type: object
+          properties:
+            start_time:
+              type: string
+              format: date-time
+            version:
+              type: string
+            ip_address:
+              type: string
+            configuration:
+              type: object
+              additionalProperties: true
+            metrics_endpoint:
+              type: string
+              format: uri
+
+    PipelineMetrics:
+      type: object
+      properties:
+        total_events_processed:
+          type: integer
+          format: int64
+        events_per_second:
+          type: number
+          format: double
+        average_latency_ms:
+          type: number
+          format: double
+        p95_latency_ms:
+          type: number
+          format: double
+        p99_latency_ms:
+          type: number
+          format: double
+        error_rate:
+          type: number
+          format: double
+          description: Errors per second
+        dlq_size:
+          type: integer
+          format: int64
+        active_workers:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    TableMetrics:
+      type: object
+      properties:
+        table_name:
+          type: string
+        events_processed:
+          type: integer
+          format: int64
+        replication_lag_seconds:
+          type: number
+          format: double
+        last_event_timestamp:
+          type: string
+          format: date-time
+        error_count:
+          type: integer
+        partition_metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              partition_id:
+                type: integer
+              current_offset:
+                type: integer
+                format: int64
+              lag:
+                type: integer
+                format: int64
+              worker_id:
+                type: string

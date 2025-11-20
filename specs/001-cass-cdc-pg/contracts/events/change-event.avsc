@@ -1,0 +1,105 @@
+{
+  "type": "record",
+  "name": "ChangeEvent",
+  "namespace": "com.cdc.pipeline.events",
+  "doc": "Represents a single data change captured from Cassandra",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Unique identifier for this event (UUID)"
+    },
+    {
+      "name": "source_table",
+      "type": "string",
+      "doc": "Fully qualified table name (keyspace.table)"
+    },
+    {
+      "name": "operation",
+      "type": {
+        "type": "enum",
+        "name": "Operation",
+        "symbols": ["INSERT", "UPDATE", "DELETE"]
+      },
+      "doc": "Type of operation performed"
+    },
+    {
+      "name": "primary_key",
+      "type": {
+        "type": "map",
+        "values": ["null", "string", "int", "long", "double", "boolean"]
+      },
+      "doc": "Primary key column names and values"
+    },
+    {
+      "name": "before_data",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": ["null", "string", "int", "long", "double", "boolean", "bytes"]
+        }
+      ],
+      "default": null,
+      "doc": "Column values before change (null for INSERT)"
+    },
+    {
+      "name": "after_data",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": ["null", "string", "int", "long", "double", "boolean", "bytes"]
+        }
+      ],
+      "default": null,
+      "doc": "Column values after change (null for DELETE)"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Cassandra write timestamp (microseconds since epoch)"
+    },
+    {
+      "name": "cassandra_node",
+      "type": "string",
+      "doc": "Cassandra node hostname that wrote the change"
+    },
+    {
+      "name": "kafka_metadata",
+      "type": {
+        "type": "record",
+        "name": "KafkaMetadata",
+        "fields": [
+          {"name": "topic", "type": "string"},
+          {"name": "partition", "type": "int"},
+          {"name": "offset", "type": "long"},
+          {"name": "timestamp", "type": "long"},
+          {"name": "key", "type": ["null", "string"], "default": null},
+          {
+            "name": "headers",
+            "type": [
+              "null",
+              {
+                "type": "map",
+                "values": "string"
+              }
+            ],
+            "default": null
+          }
+        ]
+      },
+      "doc": "Kafka message metadata"
+    },
+    {
+      "name": "schema_version",
+      "type": "int",
+      "doc": "Schema version number from schema registry"
+    },
+    {
+      "name": "trace_id",
+      "type": "string",
+      "doc": "Distributed tracing correlation ID"
+    }
+  ]
+}
