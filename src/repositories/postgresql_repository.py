@@ -3,6 +3,12 @@ import psycopg2
 from psycopg2 import pool, sql
 from psycopg2.extras import RealDictCursor
 import structlog
+from tenacity import (
+    retry,
+    stop_after_delay,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 from src.repositories.base import AbstractRepository
 from src.config.settings import Settings
@@ -11,6 +17,7 @@ from src.monitoring.metrics import (
     postgresql_query_duration_seconds,
     postgresql_active_connections,
 )
+from src.utils.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +41,11 @@ class PostgreSQLRepository(AbstractRepository):
         self.settings = settings
         self.connection_pool: Optional[pool.ThreadedConnectionPool] = None
         self._logger = logger.bind(component="postgresql_repository")
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=5,
+            timeout_seconds=60,
+            name="postgresql_connection",
+        )
 
     def connect(self) -> None:
         """
@@ -164,6 +176,12 @@ class PostgreSQLRepository(AbstractRepository):
             finally:
                 self.connection_pool.putconn(conn)
 
+    @retry(
+        retry=retry_if_exception_type((psycopg2.OperationalError, psycopg2.InterfaceError)),
+        wait=wait_exponential(multiplier=1, min=1, max=60),
+        stop=stop_after_delay(300),
+        reraise=True,
+    )
     def upsert(
         self,
         table_name: str,
@@ -173,42 +191,60 @@ class PostgreSQLRepository(AbstractRepository):
         """
         Insert or update a record using PostgreSQL ON CONFLICT.
 
+        Retries with exponential backoff on transient errors:
+        - wait_exponential: 1s, 2s, 4s, 8s, 16s, 32s, 60s
+        - stop_after_delay: 300s (5 minutes)
+
         Args:
             table_name: Name of the target table
             primary_key: List of primary key column names
             data: Dictionary of column names to values
+
+        Raises:
+            psycopg2.OperationalError: After retries exhausted
+            CircuitBreakerOpenError: If circuit breaker is open
         """
-        with postgresql_query_duration_seconds.labels(operation="upsert").time():
-            conn = self.connection_pool.getconn()
-            try:
-                cursor = conn.cursor()
+        def _execute_upsert():
+            with postgresql_query_duration_seconds.labels(operation="upsert").time():
+                conn = self.connection_pool.getconn()
+                try:
+                    cursor = conn.cursor()
 
-                columns = list(data.keys())
-                values = list(data.values())
-                placeholders = ["%s"] * len(columns)
+                    columns = list(data.keys())
+                    values = list(data.values())
+                    placeholders = ["%s"] * len(columns)
 
-                update_columns = [col for col in columns if col not in primary_key]
-                update_set = [f"{col} = EXCLUDED.{col}" for col in update_columns]
+                    update_columns = [col for col in columns if col not in primary_key]
+                    update_set = [f"{col} = EXCLUDED.{col}" for col in update_columns]
 
-                query = f"""
-                    INSERT INTO {table_name} ({', '.join(columns)})
-                    VALUES ({', '.join(placeholders)})
-                    ON CONFLICT ({', '.join(primary_key)})
-                    DO UPDATE SET {', '.join(update_set)}
-                """
+                    query = f"""
+                        INSERT INTO {table_name} ({', '.join(columns)})
+                        VALUES ({', '.join(placeholders)})
+                        ON CONFLICT ({', '.join(primary_key)})
+                        DO UPDATE SET {', '.join(update_set)}
+                    """
 
-                self._logger.debug(
-                    "executing_upsert",
-                    table=table_name,
-                    primary_key=primary_key,
-                )
+                    self._logger.debug(
+                        "executing_upsert",
+                        table=table_name,
+                        primary_key=primary_key,
+                    )
 
-                cursor.execute(query, values)
-                conn.commit()
+                    cursor.execute(query, values)
+                    conn.commit()
 
-                cursor.close()
-            finally:
-                self.connection_pool.putconn(conn)
+                    cursor.close()
+                finally:
+                    self.connection_pool.putconn(conn)
+
+        try:
+            self.circuit_breaker.call(_execute_upsert)
+        except CircuitBreakerOpenError:
+            self._logger.warning(
+                "upsert_blocked_by_circuit_breaker",
+                table=table_name,
+            )
+            raise
 
     def delete(self, table_name: str, where_clause: str, parameters: List[Any]) -> None:
         """

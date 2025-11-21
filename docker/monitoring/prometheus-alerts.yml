@@ -45,3 +45,21 @@ groups:
         annotations:
           summary: "CRITICAL: High CDC reconciliation drift"
           description: "Table {{ $labels.table }} has {{ $value }}% drift"
+
+      - alert: DLQEventsAccumulating
+        expr: rate(cdc_dlq_events_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DLQ events accumulating"
+          description: "DLQ receiving {{ $value }} events/second for table {{ $labels.table }}"
+
+      - alert: KafkaConnectTaskFailure
+        expr: kafka_connect_connector_state == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Connect task failed"
+          description: "Connector {{ $labels.connector }} is in FAILED or STOPPED state"

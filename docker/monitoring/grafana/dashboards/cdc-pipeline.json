@@ -1,0 +1,120 @@
+{
+  "dashboard": {
+    "title": "CDC Pipeline Observability",
+    "uid": "cdc-pipeline-dashboard",
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Event Throughput (events/sec)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(cdc_events_processed_total[5m])",
+            "legendFormat": "{{table}} - {{operation}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Processing Latency (P50, P95, P99)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(cdc_processing_latency_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(cdc_processing_latency_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(cdc_processing_latency_seconds_bucket[5m]))",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(cdc_errors_total[5m])",
+            "legendFormat": "{{error_type}}"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Kafka Consumer Lag",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "cdc_backlog_depth",
+            "legendFormat": "{{topic}}"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Database Connection Pools",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "cassandra_active_connections",
+            "legendFormat": "Cassandra"
+          },
+          {
+            "expr": "postgresql_active_connections",
+            "legendFormat": "PostgreSQL"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Schema Changes",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(cdc_schema_changes_total[5m])",
+            "legendFormat": "{{table}} - {{change_type}}"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "DLQ Events",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(cdc_dlq_events_total[5m])",
+            "legendFormat": "{{table}} - {{error_type}}"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Component Health",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "up{job=\"cdc-pipeline\"}",
+            "legendFormat": "Service Status"
+          }
+        ]
+      }
+    ]
+  }
+}

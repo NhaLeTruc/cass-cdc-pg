@@ -189,21 +189,21 @@ All paths relative to repository root:
 
 ### Tests for User Story 4 (TDD - MUST COMPLETE FIRST) ⚠️
 
-- [ ] T064 [P] [US4] Contract test for /health endpoint in tests/contract/test_health_api.py (verify returns 200 with all components, 503 if any component unhealthy)
-- [ ] T065 [P] [US4] Contract test for /metrics endpoint in tests/contract/test_metrics_api.py (verify Prometheus format, required metrics present: cdc_events_processed_total, cdc_processing_latency_seconds, cdc_backlog_depth, cdc_errors_total)
-- [ ] T066 [US4] Integration test for structured logging with correlation IDs in tests/integration/test_logging.py (process event, verify JSON logs contain trace_id, event_id, table, operation, no sensitive data)
-- [ ] T067 [US4] Integration test for distributed tracing spans in tests/integration/test_tracing.py (insert in Cassandra, verify trace in Jaeger with spans for capture, transform, load stages)
+- [X] T064 [P] [US4] Contract test for /health endpoint in tests/contract/test_health_api.py (verify returns 200 with all components, 503 if any component unhealthy)
+- [X] T065 [P] [US4] Contract test for /metrics endpoint in tests/contract/test_metrics_api.py (verify Prometheus format, required metrics present: cdc_events_processed_total, cdc_processing_latency_seconds, cdc_backlog_depth, cdc_errors_total)
+- [X] T066 [US4] Integration test for structured logging with correlation IDs in tests/integration/test_logging.py (process event, verify JSON logs contain trace_id, event_id, table, operation, no sensitive data)
+- [X] T067 [US4] Integration test for distributed tracing spans in tests/integration/test_tracing.py (insert in Cassandra, verify trace in Jaeger with spans for capture, transform, load stages)
 
 ### Implementation for User Story 4
 
-- [ ] T068 [P] [US4] Create FastAPI app skeleton (src/api/main.py with app initialization, CORS middleware, exception handlers)
-- [ ] T069 [P] [US4] Implement /health endpoint (src/api/routes/health.py checking Cassandra, PostgreSQL, Kafka, Schema Registry, Vault per rest-api.md contract)
-- [ ] T070 [P] [US4] Implement /metrics endpoint (src/api/routes/metrics.py exposing Prometheus metrics from src/monitoring/metrics.py)
-- [ ] T071 [US4] Add Prometheus metrics instrumentation (RED method: cdc_events_processed_total rate by table/operation, cdc_errors_total by error_type, cdc_processing_latency_seconds duration histogram by stage, cdc_backlog_depth saturation gauge)
-- [ ] T072 [US4] Configure structlog JSON renderer (update src/config/logging_config.py with JSONRenderer, add correlation_id processor, filter credentials using bandit patterns)
-- [ ] T073 [US4] Configure OpenTelemetry tracing (update src/monitoring/tracing.py with JaegerExporter, auto-instrumentation for Kafka/Cassandra/PostgreSQL clients, 10% sampling for success, 100% for errors)
-- [ ] T074 [US4] Create Grafana dashboards (docker/monitoring/grafana/dashboards/cdc-pipeline.json with panels for throughput, latency P50/P95/P99, error rate, consumer lag, connection pools)
-- [ ] T075 [US4] Create Prometheus alerting rules (docker/monitoring/prometheus-alerts.yml for HighConsumerLag >10K for 5m, UnderReplicatedPartitions >0, DLQEventsAccumulating rate >10/sec, HighLatency P95 >2s)
+- [X] T068 [P] [US4] Create FastAPI app skeleton (src/api/main.py with app initialization, CORS middleware, exception handlers)
+- [X] T069 [P] [US4] Implement /health endpoint (src/api/routes/health.py checking Cassandra, PostgreSQL, Kafka, Schema Registry, Vault per rest-api.md contract)
+- [X] T070 [P] [US4] Implement /metrics endpoint (src/api/routes/metrics.py exposing Prometheus metrics from src/monitoring/metrics.py)
+- [X] T071 [US4] Add Prometheus metrics instrumentation (RED method: cdc_events_processed_total rate by table/operation, cdc_errors_total by error_type, cdc_processing_latency_seconds duration histogram by stage, cdc_backlog_depth saturation gauge)
+- [X] T072 [US4] Configure structlog JSON renderer (update src/config/logging_config.py with JSONRenderer, add correlation_id processor, filter credentials using bandit patterns)
+- [X] T073 [US4] Configure OpenTelemetry tracing (update src/monitoring/tracing.py with JaegerExporter, auto-instrumentation for Kafka/Cassandra/PostgreSQL clients, 10% sampling for success, 100% for errors)
+- [X] T074 [US4] Create Grafana dashboards (docker/monitoring/grafana/dashboards/cdc-pipeline.json with panels for throughput, latency P50/P95/P99, error rate, consumer lag, connection pools)
+- [X] T075 [US4] Create Prometheus alerting rules (docker/monitoring/prometheus-alerts.yml for HighConsumerLag >10K for 5m, UnderReplicatedPartitions >0, DLQEventsAccumulating rate >10/sec, HighLatency P95 >2s)
 
 **Checkpoint**: User stories 1-4 complete and observable
 
@@ -217,24 +217,24 @@ All paths relative to repository root:
 
 ### Tests for User Story 5 (TDD - MUST COMPLETE FIRST) ⚠️
 
-- [ ] T076 [P] [US5] Integration test for retry with exponential backoff in tests/integration/test_retry_logic.py (stop PostgreSQL, insert in Cassandra, verify retries at 1s, 2s, 4s, 8s intervals in logs)
-- [ ] T077 [P] [US5] Integration test for DLQ routing after retries exhausted in tests/integration/test_dlq_routing.py (stop PostgreSQL, insert invalid data, wait 5 minutes, verify event in dlq-events topic with retry_count=10)
-- [ ] T078 [P] [US5] Integration test for crash recovery from checkpoint in tests/integration/test_crash_recovery.py (insert 1000 records, kill Kafka Connect after 500, restart, verify remaining 500 processed without duplicates)
-- [ ] T079 [US5] Integration test for DLQ replay in tests/integration/test_dlq_replay.py (create DLQ record, fix issue, POST /dlq/replay, verify event reprocessed successfully)
+- [X] T076 [P] [US5] Integration test for retry with exponential backoff in tests/integration/test_retry_logic.py (stop PostgreSQL, insert in Cassandra, verify retries at 1s, 2s, 4s, 8s intervals in logs)
+- [X] T077 [P] [US5] Integration test for DLQ routing after retries exhausted in tests/integration/test_dlq_routing.py (stop PostgreSQL, insert invalid data, wait 5 minutes, verify event in dlq-events topic with retry_count=10)
+- [X] T078 [P] [US5] Integration test for crash recovery from checkpoint in tests/integration/test_crash_recovery.py (insert 1000 records, kill Kafka Connect after 500, restart, verify remaining 500 processed without duplicates)
+- [X] T079 [US5] Integration test for DLQ replay in tests/integration/test_dlq_replay.py (create DLQ record, fix issue, POST /dlq/replay, verify event reprocessed successfully)
 
 ### Data Models for User Story 5
 
-- [ ] T080 [P] [US5] Create DLQRecord model in src/models/dlq_record.py (dlq_id, original_event, error_type, error_message, error_stack_trace, retry_count, first_failed_at, last_retry_at, dlq_timestamp, source_component, resolution_status with ErrorType enum: SCHEMA_MISMATCH, TYPE_CONVERSION_ERROR, CONSTRAINT_VIOLATION, NETWORK_TIMEOUT, UNKNOWN)
+- [X] T080 [P] [US5] Create DLQRecord model in src/models/dlq_record.py (dlq_id, original_event, error_type, error_message, error_stack_trace, retry_count, first_failed_at, last_retry_at, dlq_timestamp, source_component, resolution_status with ErrorType enum: SCHEMA_MISMATCH, TYPE_CONVERSION_ERROR, CONSTRAINT_VIOLATION, NETWORK_TIMEOUT, UNKNOWN)
 
 ### Implementation for User Story 5
 
-- [ ] T081 [US5] Implement DLQService in src/services/dlq_service.py (query_dlq_records, replay_events methods consuming from dlq-events topic, updating _cdc_dlq_records table)
-- [ ] T082 [US5] Configure Kafka Connect error handling (set errors.tolerance=all, errors.deadletterqueue.topic.name=dlq-events, errors.deadletterqueue.context.headers.enable=true in postgres-sink.json)
-- [ ] T083 [US5] Implement circuit breaker for PostgreSQL connections (use src/utils/circuit_breaker.py in PostgreSQLRepository, open after 5 consecutive failures, half-open after 60s)
-- [ ] T084 [US5] Configure retry policies (use tenacity in PostgreSQLRepository.upsert with exponential backoff: wait_exponential(multiplier=1, min=1, max=60), stop_after_delay(300))
-- [ ] T085 [US5] Create DLQ replay endpoint (src/api/routes/dlq.py with POST /dlq/replay accepting dlq_ids, resolution_notes, retry_strategy per rest-api.md)
-- [ ] T086 [US5] Create DLQ query endpoint (src/api/routes/dlq.py with GET /dlq/records supporting filters: error_type, resolution_status, table, start_date, end_date, pagination)
-- [ ] T087 [US5] Add DLQ monitoring metrics (cdc_dlq_events_total counter by table/error_type, cdc_dlq_replay_success_total counter, cdc_dlq_replay_failed_total counter)
+- [X] T081 [US5] Implement DLQService in src/services/dlq_service.py (query_dlq_records, replay_events methods consuming from dlq-events topic, updating _cdc_dlq_records table)
+- [X] T082 [US5] Configure Kafka Connect error handling (set errors.tolerance=all, errors.deadletterqueue.topic.name=dlq-events, errors.deadletterqueue.context.headers.enable=true in postgres-sink.json)
+- [X] T083 [US5] Implement circuit breaker for PostgreSQL connections (use src/utils/circuit_breaker.py in PostgreSQLRepository, open after 5 consecutive failures, half-open after 60s)
+- [X] T084 [US5] Configure retry policies (use tenacity in PostgreSQLRepository.upsert with exponential backoff: wait_exponential(multiplier=1, min=1, max=60), stop_after_delay(300))
+- [X] T085 [US5] Create DLQ replay endpoint (src/api/routes/dlq.py with POST /dlq/replay accepting dlq_ids, resolution_notes, retry_strategy per rest-api.md)
+- [X] T086 [US5] Create DLQ query endpoint (src/api/routes/dlq.py with GET /dlq/records supporting filters: error_type, resolution_status, table, start_date, end_date, pagination)
+- [X] T087 [US5] Add DLQ monitoring metrics (cdc_dlq_events_total counter by table/error_type, cdc_dlq_replay_success_total counter, cdc_dlq_replay_failed_total counter)
 
 **Checkpoint**: User stories 1-5 complete with robust error handling
 
