@@ -163,19 +163,19 @@ All paths relative to repository root:
 
 ### Tests for User Story 3 (TDD - MUST COMPLETE FIRST) ⚠️
 
-- [ ] T054 [P] [US3] Integration test for adding new column in tests/integration/test_schema_add_column.py (ALTER TABLE ADD COLUMN in Cassandra, verify column appears in PostgreSQL within 10s)
-- [ ] T055 [P] [US3] Integration test for dropping column in tests/integration/test_schema_drop_column.py (ALTER TABLE DROP COLUMN in Cassandra, verify PostgreSQL handles gracefully)
-- [ ] T056 [P] [US3] Integration test for compatible type change in tests/integration/test_schema_type_change.py (change int→bigint in Cassandra, verify PostgreSQL updates type)
-- [ ] T057 [US3] Integration test for incompatible schema change→DLQ in tests/integration/test_schema_incompatible.py (breaking type change, verify events routed to DLQ with SCHEMA_MISMATCH error)
+- [X] T054 [P] [US3] Integration test for adding new column in tests/integration/test_schema_add_column.py (ALTER TABLE ADD COLUMN in Cassandra, verify column appears in PostgreSQL within 10s)
+- [X] T055 [P] [US3] Integration test for dropping column in tests/integration/test_schema_drop_column.py (ALTER TABLE DROP COLUMN in Cassandra, verify PostgreSQL handles gracefully)
+- [X] T056 [P] [US3] Integration test for compatible type change in tests/integration/test_schema_type_change.py (change int→bigint in Cassandra, verify PostgreSQL updates type)
+- [X] T057 [US3] Integration test for incompatible schema change→DLQ in tests/integration/test_schema_incompatible.py (breaking type change, verify events routed to DLQ with SCHEMA_MISMATCH error)
 
 ### Implementation for User Story 3
 
-- [ ] T058 [US3] Enhance SchemaService with evolution detection (add detect_schema_changes method to compare current schema with registered schema, identify added/dropped/changed columns)
-- [ ] T059 [US3] Implement schema compatibility checker (add check_compatibility method supporting BACKWARD, FORWARD, FULL modes per schema-changes.md)
-- [ ] T060 [US3] Create Schema Registry integration (register_schema method to POST new schema versions to Schema Registry, validate compatibility before registration)
-- [ ] T061 [US3] Configure Kafka Connect schema evolution mode (set CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=true, CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=true, compatibility=BACKWARD in Schema Registry)
-- [ ] T062 [US3] Add schema-changes Kafka topic for audit log (create topic with 1 partition, 365-day retention, publish SchemaChange events on schema evolution)
-- [ ] T063 [US3] Add monitoring for schema evolution events (cdc_schema_changes_total counter by change_type, cdc_schema_versions gauge by table)
+- [X] T058 [US3] Enhance SchemaService with evolution detection (add detect_schema_changes method to compare current schema with registered schema, identify added/dropped/changed columns)
+- [X] T059 [US3] Implement schema compatibility checker (add check_compatibility method supporting BACKWARD, FORWARD, FULL modes per schema-changes.md)
+- [X] T060 [US3] Create Schema Registry integration (register_schema method to POST new schema versions to Schema Registry, validate compatibility before registration)
+- [X] T061 [US3] Configure Kafka Connect schema evolution mode (set CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=true, CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=true, compatibility=BACKWARD in Schema Registry)
+- [X] T062 [US3] Add schema-changes Kafka topic for audit log (create topic with 1 partition, 365-day retention, publish SchemaChange events on schema evolution)
+- [X] T063 [US3] Add monitoring for schema evolution events (cdc_schema_changes_total counter by change_type, cdc_schema_versions gauge by table)
 
 **Checkpoint**: All user stories 1-3 should now be independently functional
 
