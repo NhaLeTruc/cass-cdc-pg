@@ -604,12 +604,49 @@ class Configuration(BaseModel):
 | `time` | `TIME` | Time of day |
 | `blob` | `BYTEA` | Binary data |
 | `inet` | `INET` | IP address |
-| `list<T>` | `T[]` or `JSONB` | Array if T is primitive, else JSONB |
-| `set<T>` | `T[]` or `JSONB` | PostgreSQL arrays allow duplicates, use JSONB for true set |
-| `map<K,V>` | `JSONB` | Key-value pairs |
+| `list<T>` | `T[]` (PostgreSQL ARRAY) | Array for all types; if T is primitive (int, text, etc.) use native array, if T is complex use JSONB[] |
+| `set<T>` | `T[]` (PostgreSQL ARRAY) | Convert to array; note PostgreSQL arrays allow duplicates, so enforce uniqueness via CHECK constraint if required |
+| `map<K,V>` | `JSONB` | Convert to JSONB object with key-value pairs |
 | `tuple<T1,T2,...>` | `JSONB` or composite type | JSONB for flexibility |
 | `UDT` (User Defined Type) | `JSONB` or composite type | JSONB recommended for schema evolution |
 | `counter` | `BIGINT` | Cannot use auto-increment |
+
+---
+
+## Out-of-Order Event Handling & Conflict Resolution
+
+**Problem**: Due to network delays or Cassandra replication lag, events may arrive out-of-order (older event arrives after newer event).
+
+**Strategy**: **Last Write Wins (LWW)** based on event timestamps
+
+**Resolution Algorithm**:
+1. Compare incoming event's `timestamp_micros` with existing record's `updated_at` timestamp in PostgreSQL
+2. If incoming `timestamp_micros` > existing `updated_at`: Accept event (newer write)
+3. If incoming `timestamp_micros` < existing `updated_at`: Reject event (stale write)
+4. If incoming `timestamp_micros` == existing `updated_at`: Use `event_id` lexicographic comparison as tiebreaker (higher event_id wins)
+
+**Implementation**: Custom Kafka Connect Single Message Transform (SMT) in `src/connectors/transforms/timestamp_conflict_resolver.py`
+
+**Example**:
+```
+Event A: timestamp_micros=1000, event_id="aaa-111", value="Alice"
+Event B: timestamp_micros=500, event_id="bbb-222", value="Bob"
+
+Scenario 1: Event A arrives first, then Event B
+- Event A writes to PostgreSQL: updated_at=1000, value="Alice"
+- Event B rejected (500 < 1000): value remains "Alice"
+
+Scenario 2: Event B arrives first, then Event A
+- Event B writes to PostgreSQL: updated_at=500, value="Bob"
+- Event A accepted (1000 > 500): value updated to "Alice"
+
+Scenario 3: Same timestamp
+- Event A: timestamp_micros=1000, event_id="aaa-111"
+- Event C: timestamp_micros=1000, event_id="zzz-999"
+- Event C wins ("zzz-999" > "aaa-111" lexicographically)
+```
+
+**Metrics**: Track `cdc_out_of_order_events_total` counter and `cdc_conflict_resolution_rejections_total` counter
 
 ---
 
@@ -622,6 +659,7 @@ class Configuration(BaseModel):
 - For INSERT: Only `after_values` required
 - For DELETE: Only `before_values` required (or tombstone flag)
 - `column_types` must match `schema_version` definition
+- Out-of-order events validated using Last Write Wins algorithm (see above)
 
 ### Checkpoint Validation
 - `last_processed_timestamp_micros` must be ≤ current time

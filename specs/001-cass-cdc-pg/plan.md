@@ -159,11 +159,11 @@ This implementation plan defines a production-grade Change Data Capture (CDC) pi
 - No sensitive data: ✅ Credentials filtered via `bandit` pre-commit hook
 - Log levels: ✅ DEBUG (dev), INFO (prod), ERROR (alerts)
 
-**Metrics (RED Method)**:
-- Rate: ✅ `cdc_events_processed_total` (counter by table, operation)
-- Errors: ✅ `cdc_errors_total` (counter by error_type)
-- Duration: ✅ `cdc_processing_latency_seconds` (histogram by stage)
-- Saturation: ✅ `cdc_backlog_depth` (gauge by topic), connection pool metrics
+**Metrics (RED Method)** - See FR-026 in spec.md for complete requirements:
+- Rate: ✅ `cdc_events_processed_total` (counter by table, operation) - FR-026
+- Errors: ✅ `cdc_errors_total` (counter by error_type) - FR-026
+- Duration: ✅ `cdc_processing_latency_seconds` (histogram by stage, P50/P95/P99) - FR-026
+- Saturation: ✅ `cdc_backlog_depth` (gauge by topic, Kafka consumer lag in event count) - FR-026
 
 **Tracing**:
 - Distributed tracing: ✅ OpenTelemetry → Jaeger
@@ -197,9 +197,9 @@ This implementation plan defines a production-grade Change Data Capture (CDC) pi
 - No eval/exec: ✅ Prohibited, enforced by Ruff
 
 **Compliance**:
-- GDPR: ⚠️ Right to erasure requires custom implementation (out of MVP scope)
+- GDPR: ✅ Right to erasure supported via REST API endpoint (DELETE /records/{keyspace}/{table}/{primary_key} with cascading delete in both Cassandra and PostgreSQL, audit logged to _cdc_audit_log)
 - SOC 2: ✅ Access controls (Vault policies), change management (git), incident response (runbooks)
-- Audit trail: ✅ 1-year retention for schema changes, DLQ events
+- Audit trail: ✅ 1-year retention for schema changes, DLQ events, GDPR erasure requests in _cdc_audit_log table
 
 ### Constitution Check Summary: ✅ ALL GATES PASS
 

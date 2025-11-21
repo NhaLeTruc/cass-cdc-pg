@@ -18,9 +18,9 @@ As a data engineer, I need to capture all data changes from specific Cassandra t
 **Acceptance Scenarios**:
 
 1. **Given** a Cassandra table with existing records, **When** the pipeline starts, **Then** all existing records are captured and loaded into PostgreSQL
-2. **Given** the pipeline is running, **When** a new record is inserted in Cassandra, **Then** the record appears in PostgreSQL within 5 seconds
-3. **Given** the pipeline is running, **When** an existing record is updated in Cassandra, **Then** the updated values appear in PostgreSQL within 5 seconds
-4. **Given** the pipeline is running, **When** a record is deleted in Cassandra (tombstone), **Then** the corresponding record is deleted from PostgreSQL within 5 seconds
+2. **Given** the pipeline is running, **When** a new record is inserted in Cassandra, **Then** the record appears in PostgreSQL within 5 seconds (P95 latency requirement)
+3. **Given** the pipeline is running, **When** an existing record is updated in Cassandra, **Then** the updated values appear in PostgreSQL within 5 seconds (P95 latency requirement)
+4. **Given** the pipeline is running, **When** a record is deleted in Cassandra (tombstone), **Then** the corresponding record is deleted from PostgreSQL within 5 seconds (P95 latency requirement)
 5. **Given** multiple tables are configured for replication, **When** changes occur in any table, **Then** only changes from configured tables are replicated
 
 ---
@@ -184,7 +184,7 @@ As a security engineer, I need all database credentials and secrets to be stored
 
 #### Observability
 
-- **FR-026**: System MUST emit metrics for throughput (events/second), latency (P50, P95, P99), error rate, and backlog depth
+- **FR-026**: System MUST emit metrics for throughput (events/second), latency (P50, P95, P99), error rate, and backlog depth (Kafka consumer lag measured in event count, representing number of unprocessed events per topic partition)
 - **FR-027**: System MUST log all operations in structured JSON format with correlation IDs for tracing
 - **FR-028**: System MUST provide health check endpoint reporting status of all components (Cassandra, PostgreSQL, message queue)
 - **FR-029**: System MUST support distributed tracing with spans for each pipeline stage (capture, transform, load)
@@ -208,7 +208,7 @@ As a security engineer, I need all database credentials and secrets to be stored
 
 #### Performance
 
-- **FR-041**: System MUST process at least 10,000 events per second per pipeline instance
+- **FR-041**: System MUST process at minimum 10,000 events per second per pipeline instance (baseline performance target; higher throughput is acceptable and encouraged)
 - **FR-042**: System MUST maintain end-to-end latency (capture to PostgreSQL commit) under 2 seconds at P95
 - **FR-043**: System MUST support horizontal scaling by partitioning work across multiple pipeline instances
 - **FR-044**: System MUST use batching for PostgreSQL writes (configurable batch size, default 1000 records)
@@ -295,7 +295,7 @@ As a security engineer, I need all database credentials and secrets to be stored
 5. **Capacity**: PostgreSQL has sufficient capacity to store all replicated data (no auto-scaling of storage)
 6. **Consistency**: Cassandra uses tunable consistency; pipeline reads at QUORUM level for consistency
 7. **Schema Changes**: Schema changes are infrequent (< 10 per day) and mostly backward-compatible
-8. **Message Queue**: System uses message queue (Kafka or equivalent) for buffering between capture and load stages
+8. **Message Queue**: System uses Apache Kafka 3.6+ for buffering between capture and load stages (required for Debezium compatibility and exactly-once semantics)
 9. **Deployment**: Production deployment uses Kubernetes or equivalent orchestration platform
 10. **Monitoring**: Prometheus and Grafana (or equivalent) are available for metrics collection and visualization
 11. **Tracing**: Jaeger or Zipkin (or equivalent) is available for distributed tracing

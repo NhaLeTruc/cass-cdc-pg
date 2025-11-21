@@ -7,7 +7,7 @@
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-**Total Tasks**: 133 tasks (original 107 + reconciliation extension 26 new tasks)
+**Total Tasks**: 141 tasks (original 107 + reconciliation extension 26 + analysis remediation 8 new tasks)
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -50,7 +50,7 @@ All paths relative to repository root:
 - [ ] T007 Create Docker Compose file (docker/docker-compose.yml with 12 services: Cassandra, PostgreSQL, Kafka, Schema Registry, Kafka Connect, Vault, Prometheus, Grafana, Jaeger, Zookeeper, Init)
 - [ ] T008 Create .env.example with all required environment variables (Cassandra, PostgreSQL, Kafka, Vault, monitoring)
 - [ ] T009 [P] Create Cassandra Docker config (docker/cassandra/Dockerfile, cassandra.yaml with CDC enabled, init-schema.cql, enable-cdc.sh)
-- [ ] T010 [P] Create PostgreSQL Docker config (docker/postgres/Dockerfile, postgresql.conf, init-db.sql with control tables)
+- [ ] T010 [P] Create PostgreSQL Docker config (docker/postgres/Dockerfile, postgresql.conf, init-db.sql with control tables: _cdc_schema_metadata, _cdc_checkpoints, _cdc_dlq_records, _cdc_audit_log with 1-year retention policy per constitution requirement)
 - [ ] T011 [P] Create Kafka Docker config (docker/kafka/server.properties, connect-distributed.properties, create-topics.sh)
 - [ ] T012 [P] Create Vault Docker config (docker/vault/config.hcl, policies/cdc-policy.hcl, init-secrets.sh)
 - [ ] T013 [P] Create Prometheus config (docker/monitoring/prometheus.yml with scrape configs, prometheus-alerts.yml)
@@ -91,6 +91,8 @@ All paths relative to repository root:
 - [ ] T027 [P] [US1] Integration test for Cassandra→Kafka flow in tests/integration/test_cassandra_to_kafka.py (insert in Cassandra, verify event in Kafka topic)
 - [ ] T028 [P] [US1] Integration test for Kafka→PostgreSQL flow in tests/integration/test_kafka_to_postgres.py (produce to Kafka, verify write in PostgreSQL)
 - [ ] T029 [US1] End-to-end replication test in tests/integration/test_end_to_end_replication.py (INSERT, UPDATE, DELETE in Cassandra, verify all operations in PostgreSQL within 5s)
+- [ ] T136 [P] [US1] Integration test for TTL preservation in tests/integration/test_ttl_preservation.py (insert Cassandra record with TTL=3600 seconds, verify PostgreSQL record has ttl_expiry_timestamp column, wait 1 hour, verify record auto-deleted)
+- [ ] T137 [P] [US1] Integration test for out-of-order event handling in tests/integration/test_out_of_order_events.py (produce newer event with timestamp_micros=1000, then older event with timestamp_micros=500, verify older event rejected and not written to PostgreSQL)
 
 ### Data Models for User Story 1
 
@@ -106,8 +108,10 @@ All paths relative to repository root:
 
 ### Services for User Story 1
 
-- [ ] T036 [US1] Implement TypeMapper service in src/services/type_mapper.py (Cassandra→PostgreSQL type conversion: text→VARCHAR, int→INTEGER, bigint→BIGINT, uuid→UUID, timestamp→TIMESTAMPTZ, list→ARRAY, map→JSONB, UDT→JSONB)
+- [ ] T036 [US1] Implement TypeMapper service in src/services/type_mapper.py (Cassandra→PostgreSQL type conversion: text→VARCHAR, int→INTEGER, bigint→BIGINT, uuid→UUID, timestamp→TIMESTAMPTZ, list→ARRAY, map→JSONB, UDT→JSONB, TTL preservation via PostgreSQL retention policies)
 - [ ] T037 [US1] Implement SchemaService in src/services/schema_service.py (register_schema, get_schema_by_version, detect_schema_changes, validate_compatibility methods)
+- [ ] T134 [US1] Implement TTL preservation in src/services/type_mapper.py (convert Cassandra TTL to PostgreSQL retention: create trigger to auto-delete rows after TTL expires, store ttl_expiry_timestamp column calculated as inserted_at + ttl_seconds)
+- [ ] T135 [US1] Implement out-of-order event handling in src/connectors/transforms/timestamp_conflict_resolver.py (custom Kafka Connect SMT: compare event timestamp_micros with existing record's updated_at, reject older events with last-write-wins strategy, use event_id as tiebreaker if timestamps equal)
 
 ### Kafka Connect Connectors for User Story 1
 
@@ -142,7 +146,7 @@ All paths relative to repository root:
 
 - [ ] T048 [P] [US2] Optimize Docker Compose resource limits (set memory_limit for Cassandra=1GB, PostgreSQL=512MB, Kafka=1GB, other services=256MB each)
 - [ ] T049 [P] [US2] Create health check scripts (scripts/health-check-cassandra.sh, scripts/health-check-postgres.sh, scripts/health-check-kafka.sh, scripts/health-check-vault.sh)
-- [ ] T050 [US2] Create test data generator (scripts/generate_test_data.py using faker to generate realistic users, orders with configurable count)
+- [ ] T050 [US2] Create test data generator (scripts/generate_test_data.py using faker to generate realistic users, orders with configurable count, minimum 10,000 records per table to validate SC-001 correctness requirement)
 - [ ] T051 [US2] Create setup script (scripts/setup_local_env.sh for one-command setup: check prerequisites, copy .env, start services, wait for health, deploy connectors, generate test data)
 - [ ] T052 [US2] Update quickstart.md with verified local setup instructions (prerequisites, quick start, verification steps, troubleshooting)
 - [ ] T053 [US2] Add hot-reload for code changes (volume mounts in docker-compose.yml for src/ directory to enable development without rebuild)
@@ -298,6 +302,8 @@ All paths relative to repository root:
 - [ ] T121 [P] [US7] Create reconciliation job detail endpoint in src/api/routes/reconciliation.py (GET /reconciliation/jobs/{job_id} returning ReconciliationJob with nested mismatches list)
 - [ ] T122 [P] [US7] Create mismatches query endpoint in src/api/routes/reconciliation.py (GET /reconciliation/mismatches with filters: table, mismatch_type, resolution_status, pagination)
 - [ ] T123 [P] [US7] Create mismatch resolution endpoint in src/api/routes/reconciliation.py (POST /reconciliation/mismatches/{mismatch_id}/resolve accepting resolution_status and resolution_notes)
+- [ ] T138 [P] [US7] Create GDPR erasure endpoint in src/api/routes/gdpr.py (DELETE /records/{keyspace}/{table}/{primary_key} with cascading delete in Cassandra and PostgreSQL, audit to _cdc_audit_log with requester, timestamp, record_identifier, reason)
+- [ ] T139 [P] [US7] Integration test for GDPR erasure in tests/integration/test_gdpr_erasure.py (create record, call DELETE endpoint, verify removed from both Cassandra and PostgreSQL, verify audit log entry created)
 
 ### Database Schema for User Story 7
 
