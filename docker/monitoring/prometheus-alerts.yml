@@ -1,0 +1,47 @@
+groups:
+  - name: cdc_pipeline
+    rules:
+      - alert: HighConsumerLag
+        expr: cdc_backlog_depth > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kafka consumer lag detected"
+          description: "Consumer lag is {{ $value }} events"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, cdc_processing_latency_seconds) > 2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "P95 latency exceeds 2 seconds"
+          description: "P95 latency is {{ $value }} seconds"
+
+      - alert: HighErrorRate
+        expr: rate(cdc_errors_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/second"
+
+      - alert: ReconciliationDriftWarning
+        expr: cdc_reconciliation_drift_percentage > 1 and cdc_reconciliation_drift_percentage <= 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CDC reconciliation drift detected"
+          description: "Table {{ $labels.table }} has {{ $value }}% drift"
+
+      - alert: ReconciliationDriftCritical
+        expr: cdc_reconciliation_drift_percentage > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: High CDC reconciliation drift"
+          description: "Table {{ $labels.table }} has {{ $value }}% drift"

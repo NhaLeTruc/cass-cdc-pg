@@ -30,12 +30,12 @@ All paths relative to repository root:
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project directory structure (src/, tests/, docker/, config/, scripts/, helm/, docs/)
-- [ ] T002 Initialize Python project with Poetry (pyproject.toml with dependencies from plan.md)
-- [ ] T003 [P] Configure pre-commit hooks (.pre-commit-config.yaml with Ruff, Black, mypy, bandit)
-- [ ] T004 [P] Create .gitignore for Python, Docker, IDEs, secrets
-- [ ] T005 [P] Create Makefile with common commands (start, stop, test, lint, clean, health)
-- [ ] T006 [P] Create README.md with project overview, quick start, architecture diagram
+- [X] T001 Create project directory structure (src/, tests/, docker/, config/, scripts/, helm/, docs/)
+- [X] T002 Initialize Python project with Poetry (pyproject.toml with dependencies from plan.md)
+- [X] T003 [P] Configure pre-commit hooks (.pre-commit-config.yaml with Ruff, Black, mypy, bandit)
+- [X] T004 [P] Create .gitignore for Python, Docker, IDEs, secrets
+- [X] T005 [P] Create Makefile with common commands (start, stop, test, lint, clean, health)
+- [X] T006 [P] Create README.md with project overview, quick start, architecture diagram
 
 ---
 
@@ -47,30 +47,30 @@ All paths relative to repository root:
 
 ### Infrastructure & Configuration
 
-- [ ] T007 Create Docker Compose file (docker/docker-compose.yml with 12 services: Cassandra, PostgreSQL, Kafka, Schema Registry, Kafka Connect, Vault, Prometheus, Grafana, Jaeger, Zookeeper, Init)
-- [ ] T008 Create .env.example with all required environment variables (Cassandra, PostgreSQL, Kafka, Vault, monitoring)
-- [ ] T009 [P] Create Cassandra Docker config (docker/cassandra/Dockerfile, cassandra.yaml with CDC enabled, init-schema.cql, enable-cdc.sh)
-- [ ] T010 [P] Create PostgreSQL Docker config (docker/postgres/Dockerfile, postgresql.conf, init-db.sql with control tables: _cdc_schema_metadata, _cdc_checkpoints, _cdc_dlq_records, _cdc_audit_log with 1-year retention policy per constitution requirement)
-- [ ] T011 [P] Create Kafka Docker config (docker/kafka/server.properties, connect-distributed.properties, create-topics.sh)
-- [ ] T012 [P] Create Vault Docker config (docker/vault/config.hcl, policies/cdc-policy.hcl, init-secrets.sh)
-- [ ] T013 [P] Create Prometheus config (docker/monitoring/prometheus.yml with scrape configs, prometheus-alerts.yml)
-- [ ] T014 [P] Create Grafana config (docker/monitoring/grafana/datasources.yml, dashboards/cdc-pipeline.json, dashboards/kafka.json, dashboards/databases.json)
-- [ ] T015 [P] Create Jaeger config (docker/monitoring/jaeger.yml)
+- [X] T007 Create Docker Compose file (docker/docker-compose.yml with 12 services: Cassandra, PostgreSQL, Kafka, Schema Registry, Kafka Connect, Vault, Prometheus, Grafana, Jaeger, Zookeeper, Init)
+- [X] T008 Create .env.example with all required environment variables (Cassandra, PostgreSQL, Kafka, Vault, monitoring)
+- [X] T009 [P] Create Cassandra Docker config (docker/cassandra/Dockerfile, cassandra.yaml with CDC enabled, init-schema.cql, enable-cdc.sh)
+- [X] T010 [P] Create PostgreSQL Docker config (docker/postgres/Dockerfile, postgresql.conf, init-db.sql with control tables: _cdc_schema_metadata, _cdc_checkpoints, _cdc_dlq_records, _cdc_audit_log with 1-year retention policy per constitution requirement)
+- [X] T011 [P] Create Kafka Docker config (docker/kafka/server.properties, connect-distributed.properties, create-topics.sh)
+- [X] T012 [P] Create Vault Docker config (docker/vault/config.hcl, policies/cdc-policy.hcl, init-secrets.sh)
+- [X] T013 [P] Create Prometheus config (docker/monitoring/prometheus.yml with scrape configs, prometheus-alerts.yml)
+- [X] T014 [P] Create Grafana config (docker/monitoring/grafana/datasources.yml, dashboards/cdc-pipeline.json, dashboards/kafka.json, dashboards/databases.json)
+- [X] T015 [P] Create Jaeger config (docker/monitoring/jaeger.yml)
 
 ### Core Python Foundation
 
-- [ ] T016 Create configuration module (src/config/settings.py using pydantic-settings with VaultSettings, CassandraSettings, PostgreSQLSettings, KafkaSettings)
-- [ ] T017 Create logging configuration (src/config/logging_config.py with structlog JSON renderer, correlation IDs, no sensitive data filter)
-- [ ] T018 [P] Create base repository ABC (src/repositories/base.py with AbstractRepository interface)
-- [ ] T019 [P] Create metrics module (src/monitoring/metrics.py with Prometheus client, RED method metrics: events_processed_total, processing_latency_seconds, errors_total, backlog_depth)
-- [ ] T020 [P] Create tracing module (src/monitoring/tracing.py with OpenTelemetry setup, Jaeger exporter, span instrumentation helpers)
-- [ ] T021 [P] Create health check service (src/monitoring/health_check.py with checks for Cassandra, PostgreSQL, Kafka, Schema Registry, Vault)
+- [X] T016 Create configuration module (src/config/settings.py using pydantic-settings with VaultSettings, CassandraSettings, PostgreSQLSettings, KafkaSettings)
+- [X] T017 Create logging configuration (src/config/logging_config.py with structlog JSON renderer, correlation IDs, no sensitive data filter)
+- [X] T018 [P] Create base repository ABC (src/repositories/base.py with AbstractRepository interface)
+- [X] T019 [P] Create metrics module (src/monitoring/metrics.py with Prometheus client, RED method metrics: events_processed_total, processing_latency_seconds, errors_total, backlog_depth)
+- [X] T020 [P] Create tracing module (src/monitoring/tracing.py with OpenTelemetry setup, Jaeger exporter, span instrumentation helpers)
+- [X] T021 [P] Create health check service (src/monitoring/health_check.py with checks for Cassandra, PostgreSQL, Kafka, Schema Registry, Vault)
 
 ### Utility Libraries
 
-- [ ] T022 [P] Create retry utility (src/utils/retry.py with tenacity decorators, exponential backoff 1s→60s)
-- [ ] T023 [P] Create circuit breaker (src/utils/circuit_breaker.py with 5 failures→open, 60s half-open)
-- [ ] T024 [P] Create validators (src/utils/validators.py for event validation, schema validation, data integrity)
+- [X] T022 [P] Create retry utility (src/utils/retry.py with tenacity decorators, exponential backoff 1s→60s)
+- [X] T023 [P] Create circuit breaker (src/utils/circuit_breaker.py with 5 failures→open, 60s half-open)
+- [X] T024 [P] Create validators (src/utils/validators.py for event validation, schema validation, data integrity)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

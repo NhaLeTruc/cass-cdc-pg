@@ -1,0 +1,224 @@
+version: '3.8'
+
+services:
+  # Zookeeper - Required for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.2
+    container_name: cdc-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - cdc-network
+    mem_limit: 256m
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.2
+    container_name: cdc-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    networks:
+      - cdc-network
+    mem_limit: 1g
+
+  # Schema Registry
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.2
+    container_name: cdc-schema-registry
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - cdc-network
+    mem_limit: 256m
+
+  # Kafka Connect
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.5.2
+    container_name: cdc-kafka-connect
+    depends_on:
+      - kafka
+      - schema-registry
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:9092
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: cdc-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+    volumes:
+      - ./docker/connectors:/etc/kafka-connect/connectors
+    networks:
+      - cdc-network
+    mem_limit: 512m
+
+  # Cassandra
+  cassandra:
+    build:
+      context: ./docker/cassandra
+      dockerfile: Dockerfile
+    container_name: cdc-cassandra
+    ports:
+      - "9042:9042"
+      - "9160:9160"
+    environment:
+      CASSANDRA_CLUSTER_NAME: cdc-cluster
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 128M
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+      - ./docker/cassandra/init-schema.cql:/docker-entrypoint-initdb.d/init-schema.cql
+    networks:
+      - cdc-network
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL
+  postgres:
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    container_name: cdc-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: cdc_user
+      POSTGRES_PASSWORD: cdc_password
+      POSTGRES_DB: warehouse
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - cdc-network
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cdc_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # HashiCorp Vault
+  vault:
+    image: vault:1.15.4
+    container_name: cdc-vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./docker/vault/config.hcl:/vault/config/config.hcl
+      - ./docker/vault/policies:/vault/policies
+    command: server -dev -dev-root-token-id="dev-root-token"
+    networks:
+      - cdc-network
+    mem_limit: 256m
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: cdc-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/monitoring/prometheus-alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - cdc-network
+    mem_limit: 256m
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: cdc-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - ./docker/monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./docker/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+    networks:
+      - cdc-network
+    mem_limit: 256m
+
+  # Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:1.53.0
+    container_name: cdc-jaeger
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+    networks:
+      - cdc-network
+    mem_limit: 256m
+
+networks:
+  cdc-network:
+    driver: bridge
+
+volumes:
+  cassandra-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
