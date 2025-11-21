@@ -62,32 +62,69 @@ cd cass-cdc-pg
 git checkout 001-cass-cdc-pg
 ```
 
-### 2. Start All Services
+### 2. One-Command Setup (Recommended)
+
+```bash
+# Run the automated setup script - it does everything!
+bash scripts/setup_local_env.sh
+
+# This script will:
+# 1. Check prerequisites (Docker, Python, etc.)
+# 2. Create .env from .env.example
+# 3. Start all Docker services
+# 4. Wait for services to become healthy
+# 5. Deploy Kafka Connect connectors
+# 6. Generate 10,000 test records
+# 7. Verify replication is working
+
+# Expected final output:
+# ==========================================
+# Local CDC Environment Ready!
+# ==========================================
+#
+# Services:
+#   • Cassandra:       localhost:9042
+#   • PostgreSQL:      localhost:5432
+#   • Kafka:           localhost:9092 (internal), localhost:9093 (external)
+#   • Schema Registry: http://localhost:8081
+#   • Kafka Connect:   http://localhost:8083
+#   • Vault:           http://localhost:8200 (token: dev-root-token)
+#   • Prometheus:      http://localhost:9090
+#   • Grafana:         http://localhost:3000 (admin/admin)
+#   • Jaeger:          http://localhost:16686
+```
+
+**Total Setup Time**: ~3-5 minutes (longer on first run due to image downloads)
+
+### 3. Manual Setup (Alternative)
+
+If you prefer manual control, follow these steps:
 
 ```bash
 # Start entire CDC pipeline stack
-make start
-
-# Or using Docker Compose directly:
 docker-compose up -d
 
+# Wait for services to become healthy (~60-90 seconds)
+bash scripts/health-check-cassandra.sh
+bash scripts/health-check-postgres.sh
+bash scripts/health-check-kafka.sh
+bash scripts/health-check-vault.sh
+
+# Generate test data
+python3 scripts/generate_test_data.py --users 10000 --orders 10000 --sessions 1000
+
 # Expected output:
-# Creating network "cdc-network"...
-# Creating cdc-cassandra...
-# Creating cdc-postgres...
-# Creating cdc-kafka...
-# Creating cdc-vault...
-# Creating cdc-schema-registry...
-# Creating cdc-kafka-connect...
-# Creating cdc-prometheus...
-# Creating cdc-grafana...
-# Creating cdc-jaeger...
-# All services started successfully!
+# ✓ Connected to Cassandra at localhost:9042
+# Generating 10000 users...
+#   Progress: 10000/10000 users (100%)
+# ✓ Generated 10000 users
+# Generating 10000 orders...
+#   Progress: 10000/10000 orders (100%)
+# ✓ Generated 10000 orders
+# ...
 ```
 
-**Wait Time**: ~60 seconds for all services to become healthy
-
-### 3. Verify Services
+### 4. Verify Services
 
 ```bash
 # Check all containers are running
@@ -97,60 +134,47 @@ docker-compose ps
 # NAME                   STATUS              PORTS
 # cdc-cassandra          Up (healthy)        9042->9042
 # cdc-postgres           Up (healthy)        5432->5432
-# cdc-kafka              Up (healthy)        9092->9092
+# cdc-kafka              Up                  9092->9092, 9093->9093
 # cdc-schema-registry    Up                  8081->8081
 # cdc-kafka-connect      Up                  8083->8083
 # cdc-vault              Up                  8200->8200
 # cdc-prometheus         Up                  9090->9090
 # cdc-grafana            Up                  3000->3000
-# cdc-jaeger             Up                  16686->16686
+# cdc-jaeger             Up                  16686->16686, 5775->5775, ...
 
-# Or use the health check script
-make health
-
-# Or check manually:
-curl http://localhost:8080/api/v1/health | jq
-```
-
-### 4. Insert Test Data
-
-```bash
-# Run the test data generator script
-make generate-data
-
-# Or manually:
-docker exec -it cdc-cassandra cqlsh -e "
-  INSERT INTO warehouse.users (id, username, email, created_at)
-  VALUES ('user-1', 'alice', 'alice@example.com', toTimestamp(now()));
-
-  INSERT INTO warehouse.users (id, username, email, created_at)
-  VALUES ('user-2', 'bob', 'bob@example.com', toTimestamp(now()));
-
-  INSERT INTO warehouse.users (id, username, email, created_at)
-  VALUES ('user-3', 'charlie', 'charlie@example.com', toTimestamp(now()));
-"
-
-# Expected output:
-# Inserted 3 test records into warehouse.users
+# Or use individual health check scripts
+bash scripts/health-check-cassandra.sh  # ✓ Cassandra is healthy
+bash scripts/health-check-postgres.sh   # ✓ PostgreSQL is healthy
+bash scripts/health-check-kafka.sh      # ✓ Kafka is healthy
+bash scripts/health-check-vault.sh      # ✓ Vault is healthy and unsealed
 ```
 
 ### 5. Verify Replication
 
 ```bash
 # Check data replicated to PostgreSQL
-docker exec -it cdc-postgres psql -U admin -d warehouse -c "
-  SELECT id, username, email, created_at FROM cdc_users ORDER BY created_at DESC LIMIT 10;
+docker exec -it cdc-postgres psql -U cdc_user -d warehouse -c "
+  SELECT COUNT(*) FROM cdc_users;
 "
 
 # Expected output:
-#     id     | username |        email         |          created_at
-# -----------+----------+----------------------+-------------------------------
-#  user-3    | charlie  | charlie@example.com  | 2025-11-20 08:45:03.123+00
-#  user-2    | bob      | bob@example.com      | 2025-11-20 08:45:02.456+00
-#  user-1    | alice    | alice@example.com    | 2025-11-20 08:45:01.789+00
+#  count
+# --------
+#  10000
+# (1 row)
+
+# View sample replicated data
+docker exec -it cdc-postgres psql -U cdc_user -d warehouse -c "
+  SELECT id, username, email, created_at
+  FROM cdc_users
+  ORDER BY created_at DESC
+  LIMIT 5;
+"
+
+# Expected output: 5 user records with realistic data
 ```
 
-**If data appears in PostgreSQL within 5 seconds, replication is working!**
+**If you see 10,000+ records in PostgreSQL, replication is working!**
 
 ---
 
@@ -306,61 +330,57 @@ cqlsh:warehouse> SELECT * FROM users LIMIT 10;
 ### Automated Test Data Script
 
 ```bash
-# Generate 100 realistic records
-make generate-data COUNT=100
+# Generate test data with default counts (10,000 users, 10,000 orders, 1,000 sessions)
+python3 scripts/generate_test_data.py
 
-# Or run Python script directly:
-python3 scripts/generate_test_data.py --count 100 --table users
+# Generate custom counts
+python3 scripts/generate_test_data.py --users 50000 --orders 25000 --sessions 5000
+
+# Generate with specific batch size for performance
+python3 scripts/generate_test_data.py --users 100000 --batch-size 500
+
+# Clear existing data before generating
+python3 scripts/generate_test_data.py --clear
+
+# Skip data generation during setup
+bash scripts/setup_local_env.sh --no-data
 ```
 
-**Test Data Script** (`scripts/generate_test_data.py`):
+**Script Options**:
+- `--host`: Cassandra host (default: localhost)
+- `--port`: Cassandra port (default: 9042)
+- `--users`: Number of users to generate (default: 10000)
+- `--orders`: Number of orders to generate (default: 10000)
+- `--sessions`: Number of sessions to generate (default: 1000)
+- `--batch-size`: Batch size for inserts (default: 100)
+- `--clear`: Clear existing data before generating
 
-```python
-#!/usr/bin/env python3
-"""Generate realistic test data for CDC pipeline testing."""
+**Expected Output**:
 
-import argparse
-from cassandra.cluster import Cluster
-from faker import Faker
-import uuid
+```
+✓ Connected to Cassandra at localhost:9042
 
-fake = Faker()
+============================================================
+GENERATING TEST DATA
+============================================================
+Generating 10000 users...
+  Progress: 10000/10000 users (100%)
+✓ Generated 10000 users
+Generating 10000 orders...
+  Progress: 10000/10000 orders (100%)
+✓ Generated 10000 orders
+Generating 1000 sessions...
+  Progress: 1000/1000 sessions (100%)
+✓ Generated 1000 sessions
 
-def generate_users(session, count: int):
-    """Generate fake user records."""
-    insert_stmt = session.prepare("""
-        INSERT INTO warehouse.users (id, username, email, created_at, updated_at)
-        VALUES (?, ?, ?, toTimestamp(now()), toTimestamp(now()))
-    """)
+============================================================
+Verifying data counts...
+  users: 10000 records
+  orders: 10000 records
+  sessions: 1000 records
+============================================================
 
-    for i in range(count):
-        user_id = f"user-{uuid.uuid4()}"
-        username = fake.user_name()
-        email = fake.email()
-        session.execute(insert_stmt, (user_id, username, email))
-        if (i + 1) % 100 == 0:
-            print(f"Inserted {i + 1} records...")
-
-    print(f"Successfully inserted {count} user records")
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--count', type=int, default=100)
-    parser.add_argument('--table', default='users')
-    args = parser.parse_args()
-
-    cluster = Cluster(['localhost'], port=9042)
-    session = cluster.connect()
-
-    if args.table == 'users':
-        generate_users(session, args.count)
-    else:
-        print(f"Unknown table: {args.table}")
-
-    cluster.shutdown()
-
-if __name__ == '__main__':
-    main()
+✓ Test data generation complete!
 ```
 
 ---

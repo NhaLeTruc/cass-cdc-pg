@@ -1,0 +1,32 @@
+# Dockerfile for CDC API Service with Hot-Reload Support
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files
+COPY pyproject.toml /app/
+
+# Install Poetry and dependencies
+RUN pip install --no-cache-dir poetry && \
+    poetry config virtualenvs.create false
+
+# Install dependencies
+RUN poetry install --no-root --no-interaction --no-ansi
+
+# Copy source code (will be overridden by volume mount for hot-reload)
+COPY src /app/src
+
+# Expose API port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+# Run with uvicorn (--reload flag enables hot-reload)
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]

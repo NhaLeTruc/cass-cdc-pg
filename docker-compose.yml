@@ -12,7 +12,10 @@ services:
       - "2181:2181"
     networks:
       - cdc-network
-    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # Kafka Broker
   kafka:
@@ -36,7 +39,10 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 168
     networks:
       - cdc-network
-    mem_limit: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   # Schema Registry
   schema-registry:
@@ -52,7 +58,10 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
     networks:
       - cdc-network
-    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # Kafka Connect
   kafka-connect:
@@ -80,12 +89,16 @@ services:
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
-      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/opt/transforms
     volumes:
       - ./docker/connectors:/etc/kafka-connect/connectors
+      - ./src/connectors/transforms:/opt/transforms:ro
     networks:
       - cdc-network
-    mem_limit: 512m
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   # Cassandra
   cassandra:
@@ -108,7 +121,10 @@ services:
       - ./docker/cassandra/init-schema.cql:/docker-entrypoint-initdb.d/init-schema.cql
     networks:
       - cdc-network
-    mem_limit: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
       interval: 30s
@@ -132,7 +148,10 @@ services:
       - ./docker/postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - cdc-network
-    mem_limit: 512m
+    deploy:
+      resources:
+        limits:
+          memory: 512m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cdc_user"]
       interval: 10s
@@ -156,7 +175,10 @@ services:
     command: server -dev -dev-root-token-id="dev-root-token"
     networks:
       - cdc-network
-    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # Prometheus
   prometheus:
@@ -174,7 +196,10 @@ services:
       - '--storage.tsdb.retention.time=15d'
     networks:
       - cdc-network
-    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # Grafana
   grafana:
@@ -192,7 +217,10 @@ services:
       - grafana-data:/var/lib/grafana
     networks:
       - cdc-network
-    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   # Jaeger
   jaeger:
@@ -211,7 +239,49 @@ services:
       COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
     networks:
       - cdc-network
-    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # CDC API Service (optional - for future user stories)
+  cdc-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: cdc-api
+    ports:
+      - "8080:8080"
+    environment:
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_PORT: 9042
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+      PROMETHEUS_URL: http://prometheus:9090
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+      LOG_LEVEL: INFO
+    volumes:
+      - ./src:/app/src:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+    networks:
+      - cdc-network
+    depends_on:
+      - cassandra
+      - postgres
+      - kafka
+      - vault
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    profiles:
+      - api
+    command: >
+      sh -c "pip install -e . && uvicorn src.api.main:app --host 0.0.0.0 --port 8080 --reload"
 
 networks:
   cdc-network:

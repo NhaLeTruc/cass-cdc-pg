@@ -138,18 +138,18 @@ All paths relative to repository root:
 
 ### Tests for User Story 2 (TDD - MUST COMPLETE FIRST) ⚠️
 
-- [ ] T045 [P] [US2] Integration test for Docker Compose health checks in tests/integration/test_docker_health.py (verify all 12 services start and become healthy within 90 seconds)
-- [ ] T046 [P] [US2] Integration test for resource constraints in tests/integration/test_resource_limits.py (verify total Docker memory usage < 4GB)
-- [ ] T047 [US2] Integration test for checkpoint resume after restart in tests/integration/test_checkpoint_resume.py (insert data, stop services, restart, verify no data loss or duplication)
+- [X] T045 [P] [US2] Integration test for Docker Compose health checks in tests/integration/test_docker_health.py (verify all 12 services start and become healthy within 90 seconds)
+- [X] T046 [P] [US2] Integration test for resource constraints in tests/integration/test_resource_limits.py (verify total Docker memory usage < 4GB)
+- [X] T047 [US2] Integration test for checkpoint resume after restart in tests/integration/test_checkpoint_resume.py (insert data, stop services, restart, verify no data loss or duplication)
 
 ### Implementation for User Story 2
 
-- [ ] T048 [P] [US2] Optimize Docker Compose resource limits (set memory_limit for Cassandra=1GB, PostgreSQL=512MB, Kafka=1GB, other services=256MB each)
-- [ ] T049 [P] [US2] Create health check scripts (scripts/health-check-cassandra.sh, scripts/health-check-postgres.sh, scripts/health-check-kafka.sh, scripts/health-check-vault.sh)
-- [ ] T050 [US2] Create test data generator (scripts/generate_test_data.py using faker to generate realistic users, orders with configurable count, minimum 10,000 records per table to validate SC-001 correctness requirement)
-- [ ] T051 [US2] Create setup script (scripts/setup_local_env.sh for one-command setup: check prerequisites, copy .env, start services, wait for health, deploy connectors, generate test data)
-- [ ] T052 [US2] Update quickstart.md with verified local setup instructions (prerequisites, quick start, verification steps, troubleshooting)
-- [ ] T053 [US2] Add hot-reload for code changes (volume mounts in docker-compose.yml for src/ directory to enable development without rebuild)
+- [X] T048 [P] [US2] Optimize Docker Compose resource limits (set memory_limit for Cassandra=1GB, PostgreSQL=512MB, Kafka=1GB, other services=256MB each)
+- [X] T049 [P] [US2] Create health check scripts (scripts/health-check-cassandra.sh, scripts/health-check-postgres.sh, scripts/health-check-kafka.sh, scripts/health-check-vault.sh)
+- [X] T050 [US2] Create test data generator (scripts/generate_test_data.py using faker to generate realistic users, orders with configurable count, minimum 10,000 records per table to validate SC-001 correctness requirement)
+- [X] T051 [US2] Create setup script (scripts/setup_local_env.sh for one-command setup: check prerequisites, copy .env, start services, wait for health, deploy connectors, generate test data)
+- [X] T052 [US2] Update quickstart.md with verified local setup instructions (prerequisites, quick start, verification steps, troubleshooting)
+- [X] T053 [US2] Add hot-reload for code changes (volume mounts in docker-compose.yml for src/ directory to enable development without rebuild)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
