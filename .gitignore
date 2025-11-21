@@ -16,118 +16,76 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
-*.manifest
-*.spec
-pip-log.txt
-pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.virtualenv/
+
+# Testing
 .tox/
+.nox/
 .coverage
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *.cover
-.hypothesis/
+*.log
 .pytest_cache/
 htmlcov/
 
-# Virtual environments
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-.venv/
-
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
-# Credentials and secrets (NEVER COMMIT THESE!)
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-*.jks
-*.keystore
-*.truststore
+# Environment files
 .env
-.env.*
-!.env.example
-!.env.*.example
+.env.local
+.env.*.local
+*.secret
 secrets/
-credentials/
-*.credentials
-*.secrets
-config/prod/*.yml
-config/prod/*.yaml
-config/prod/*.json
-!config/prod/*.example
-vault-keys.json
-vault-token
-.vault-token
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
+.secrets.baseline
 
 # Logs
 *.log
 logs/
 *.log.*
 
-# Docker
-docker-compose.override.yml
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# Monitoring data
-monitoring/prometheus/data/
-monitoring/grafana/data/
+# Docker
+.dockerignore
 
 # Temporary files
-tmp/
-temp/
 *.tmp
-*.bak
-*.swp
+*.temp
+.tmp/
+.temp/
 
-# OS
-Thumbs.db
-.DS_Store
+# Build artifacts
+*.o
+*.a
+*.exe
+*.out
 
-# CI/CD
-.github/workflows/secrets.yml
-
-# Secrets baseline (detect-secrets)
-.secrets.baseline
-
-# Redis persistence
-*.rdb
-*.aof
-dump.rdb
-appendonly.aof
-
-# Kafka data
-kafka-logs/
-
-# Test outputs
-.testcontainers/
-test-results/
-test-reports/
-
-# Large files
-*.tar.gz
-*.zip
-*.tar
-*.jar
-*.war
-*.ear
+# Project-specific
+docker/connectors/*.json.bak
+config/prod/*.yaml
+!config/prod/*.yaml.template
