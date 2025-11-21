@@ -86,45 +86,45 @@ All paths relative to repository root:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T025 [P] [US1] Contract test for Change Event Avro schema in tests/contract/test_change_event_schema.py (validate schema compatibility, field types, required fields)
-- [ ] T026 [P] [US1] Contract test for cdc-events Kafka topic in tests/contract/test_kafka_topics.py (validate topic config, partitioning, replication)
-- [ ] T027 [P] [US1] Integration test for Cassandra→Kafka flow in tests/integration/test_cassandra_to_kafka.py (insert in Cassandra, verify event in Kafka topic)
-- [ ] T028 [P] [US1] Integration test for Kafka→PostgreSQL flow in tests/integration/test_kafka_to_postgres.py (produce to Kafka, verify write in PostgreSQL)
-- [ ] T029 [US1] End-to-end replication test in tests/integration/test_end_to_end_replication.py (INSERT, UPDATE, DELETE in Cassandra, verify all operations in PostgreSQL within 5s)
-- [ ] T136 [P] [US1] Integration test for TTL preservation in tests/integration/test_ttl_preservation.py (insert Cassandra record with TTL=3600 seconds, verify PostgreSQL record has ttl_expiry_timestamp column, wait 1 hour, verify record auto-deleted)
-- [ ] T137 [P] [US1] Integration test for out-of-order event handling in tests/integration/test_out_of_order_events.py (produce newer event with timestamp_micros=1000, then older event with timestamp_micros=500, verify older event rejected and not written to PostgreSQL)
+- [X] T025 [P] [US1] Contract test for Change Event Avro schema in tests/contract/test_change_event_schema.py (validate schema compatibility, field types, required fields)
+- [X] T026 [P] [US1] Contract test for cdc-events Kafka topic in tests/contract/test_kafka_topics.py (validate topic config, partitioning, replication)
+- [X] T027 [P] [US1] Integration test for Cassandra→Kafka flow in tests/integration/test_cassandra_to_kafka.py (insert in Cassandra, verify event in Kafka topic)
+- [X] T028 [P] [US1] Integration test for Kafka→PostgreSQL flow in tests/integration/test_kafka_to_postgres.py (produce to Kafka, verify write in PostgreSQL)
+- [X] T029 [US1] End-to-end replication test in tests/integration/test_end_to_end_replication.py (INSERT, UPDATE, DELETE in Cassandra, verify all operations in PostgreSQL within 5s)
+- [X] T136 [P] [US1] Integration test for TTL preservation in tests/integration/test_ttl_preservation.py (insert Cassandra record with TTL=3600 seconds, verify PostgreSQL record has ttl_expiry_timestamp column, wait 1 hour, verify record auto-deleted)
+- [X] T137 [P] [US1] Integration test for out-of-order event handling in tests/integration/test_out_of_order_events.py (produce newer event with timestamp_micros=1000, then older event with timestamp_micros=500, verify older event rejected and not written to PostgreSQL)
 
 ### Data Models for User Story 1
 
-- [ ] T030 [P] [US1] Create ChangeEvent model in src/models/change_event.py (event_id, source, operation, timestamp_micros, before, after, schema_version, ttl_seconds, is_tombstone with OperationType enum: CREATE, UPDATE, DELETE, TRUNCATE)
-- [ ] T031 [P] [US1] Create Checkpoint model in src/models/checkpoint.py (checkpoint_id, source_table, partition_key_hash, last_processed_event_id, last_processed_timestamp_micros, checkpoint_timestamp, kafka_offset, kafka_partition, status)
-- [ ] T032 [P] [US1] Create SchemaMetadata model in src/models/schema_metadata.py (schema_id, source_table, version, columns, primary_key, avro_schema, avro_schema_id, effective_from, effective_to, compatibility_mode, change_type)
+- [X] T030 [P] [US1] Create ChangeEvent model in src/models/change_event.py (event_id, source, operation, timestamp_micros, before, after, schema_version, ttl_seconds, is_tombstone with OperationType enum: CREATE, UPDATE, DELETE, TRUNCATE)
+- [X] T031 [P] [US1] Create Checkpoint model in src/models/checkpoint.py (checkpoint_id, source_table, partition_key_hash, last_processed_event_id, last_processed_timestamp_micros, checkpoint_timestamp, kafka_offset, kafka_partition, status)
+- [X] T032 [P] [US1] Create SchemaMetadata model in src/models/schema_metadata.py (schema_id, source_table, version, columns, primary_key, avro_schema, avro_schema_id, effective_from, effective_to, compatibility_mode, change_type)
 
 ### Repositories for User Story 1
 
-- [ ] T033 [US1] Implement CassandraRepository in src/repositories/cassandra_repository.py (connect, read_schema, query_table, health_check methods using cassandra-driver)
-- [ ] T034 [US1] Implement PostgreSQLRepository in src/repositories/postgresql_repository.py (connect, create_table, upsert, delete, query, health_check methods using psycopg2 with connection pooling)
-- [ ] T035 [US1] Implement VaultRepository in src/repositories/vault_repository.py (get_credentials, renew_lease, health_check methods using hvac client)
+- [X] T033 [US1] Implement CassandraRepository in src/repositories/cassandra_repository.py (connect, read_schema, query_table, health_check methods using cassandra-driver)
+- [X] T034 [US1] Implement PostgreSQLRepository in src/repositories/postgresql_repository.py (connect, create_table, upsert, delete, query, health_check methods using psycopg2 with connection pooling)
+- [X] T035 [US1] Implement VaultRepository in src/repositories/vault_repository.py (get_credentials, renew_lease, health_check methods using hvac client)
 
 ### Services for User Story 1
 
-- [ ] T036 [US1] Implement TypeMapper service in src/services/type_mapper.py (Cassandra→PostgreSQL type conversion: text→VARCHAR, int→INTEGER, bigint→BIGINT, uuid→UUID, timestamp→TIMESTAMPTZ, list→ARRAY, map→JSONB, UDT→JSONB, TTL preservation via PostgreSQL retention policies)
-- [ ] T037 [US1] Implement SchemaService in src/services/schema_service.py (register_schema, get_schema_by_version, detect_schema_changes, validate_compatibility methods)
-- [ ] T134 [US1] Implement TTL preservation in src/services/type_mapper.py (convert Cassandra TTL to PostgreSQL retention: create trigger to auto-delete rows after TTL expires, store ttl_expiry_timestamp column calculated as inserted_at + ttl_seconds)
-- [ ] T135 [US1] Implement out-of-order event handling in src/connectors/transforms/timestamp_conflict_resolver.py (custom Kafka Connect SMT: compare event timestamp_micros with existing record's updated_at, reject older events with last-write-wins strategy, use event_id as tiebreaker if timestamps equal)
+- [X] T036 [US1] Implement TypeMapper service in src/services/type_mapper.py (Cassandra→PostgreSQL type conversion: text→VARCHAR, int→INTEGER, bigint→BIGINT, uuid→UUID, timestamp→TIMESTAMPTZ, list→ARRAY, map→JSONB, UDT→JSONB, TTL preservation via PostgreSQL retention policies)
+- [X] T037 [US1] Implement SchemaService in src/services/schema_service.py (register_schema, get_schema_by_version, detect_schema_changes, validate_compatibility methods)
+- [X] T134 [US1] Implement TTL preservation in src/services/type_mapper.py (convert Cassandra TTL to PostgreSQL retention: create trigger to auto-delete rows after TTL expires, store ttl_expiry_timestamp column calculated as inserted_at + ttl_seconds)
+- [X] T135 [US1] Implement out-of-order event handling in src/connectors/transforms/timestamp_conflict_resolver.py (custom Kafka Connect SMT: compare event timestamp_micros with existing record's updated_at, reject older events with last-write-wins strategy, use event_id as tiebreaker if timestamps equal)
 
 ### Kafka Connect Connectors for User Story 1
 
-- [ ] T038 [US1] Create Debezium Cassandra source connector config (docker/connectors/cassandra-source.json with cassandra.hosts, cassandra.table.include.list, kafka.topic.prefix, offset.storage.topic, max.batch.size=2048, max.queue.size=8192, tombstones.on.delete=true)
-- [ ] T039 [US1] Create JDBC PostgreSQL sink connector config (docker/connectors/postgres-sink.json with connection.url, topics.regex, auto.create=true, auto.evolve=true, insert.mode=upsert, pk.mode=record_key, delete.enabled=true, batch.size=1000, errors.tolerance=all, errors.deadletterqueue.topic.name=dlq-events)
-- [ ] T040 [US1] Create connector deployment script (docker/connectors/deploy-connectors.sh to POST connector configs to Kafka Connect REST API on startup)
+- [X] T038 [US1] Create Debezium Cassandra source connector config (docker/connectors/cassandra-source.json with cassandra.hosts, cassandra.table.include.list, kafka.topic.prefix, offset.storage.topic, max.batch.size=2048, max.queue.size=8192, tombstones.on.delete=true)
+- [X] T039 [US1] Create JDBC PostgreSQL sink connector config (docker/connectors/postgres-sink.json with connection.url, topics.regex, auto.create=true, auto.evolve=true, insert.mode=upsert, pk.mode=record_key, delete.enabled=true, batch.size=1000, errors.tolerance=all, errors.deadletterqueue.topic.name=dlq-events)
+- [X] T040 [US1] Create connector deployment script (docker/connectors/deploy-connectors.sh to POST connector configs to Kafka Connect REST API on startup)
 
 ### Integration for User Story 1
 
-- [ ] T041 [US1] Configure Schema Registry with Change Event Avro schema (register schemas for cdc-events-users-key and cdc-events-users-value with BACKWARD compatibility)
-- [ ] T042 [US1] Create initial Cassandra test schema (docker/cassandra/init-schema.cql with warehouse keyspace, users and orders tables with CDC enabled)
-- [ ] T043 [US1] Create initial PostgreSQL test schema (docker/postgres/init-db.sql with public schema, cdc_users and cdc_orders tables, _cdc_schema_metadata, _cdc_checkpoints, _cdc_dlq_records control tables)
-- [ ] T044 [US1] Add monitoring for US1 metrics (cdc_events_processed_total counter by table/operation, cdc_processing_latency_seconds histogram by stage, cdc_backlog_depth gauge by topic)
+- [X] T041 [US1] Configure Schema Registry with Change Event Avro schema (register schemas for cdc-events-users-key and cdc-events-users-value with BACKWARD compatibility)
+- [X] T042 [US1] Create initial Cassandra test schema (docker/cassandra/init-schema.cql with warehouse keyspace, users and orders tables with CDC enabled)
+- [X] T043 [US1] Create initial PostgreSQL test schema (docker/postgres/init-db.sql with public schema, cdc_users and cdc_orders tables, _cdc_schema_metadata, _cdc_checkpoints, _cdc_dlq_records control tables)
+- [X] T044 [US1] Add monitoring for US1 metrics (cdc_events_processed_total counter by table/operation, cdc_processing_latency_seconds histogram by stage, cdc_backlog_depth gauge by topic)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 

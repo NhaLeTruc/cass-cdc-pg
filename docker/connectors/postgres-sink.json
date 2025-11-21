@@ -1,0 +1,64 @@
+{
+  "name": "postgres-sink-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "3",
+
+    "connection.url": "jdbc:postgresql://postgres:5432/cdc_target",
+    "connection.user": "${file:/secrets/postgres:username}",
+    "connection.password": "${file:/secrets/postgres:password}",
+
+    "topics.regex": "cdc-events-.*",
+
+    "auto.create": "true",
+    "auto.evolve": "true",
+
+    "insert.mode": "upsert",
+    "pk.mode": "record_key",
+    "pk.fields": "id",
+    "delete.enabled": "true",
+
+    "table.name.format": "cdc_${topic}",
+
+    "batch.size": "1000",
+    "max.retries": "10",
+    "retry.backoff.ms": "3000",
+
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+
+    "transforms": "addCdcMetadata,handleDeletes,extractTtl",
+
+    "transforms.addCdcMetadata.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+    "transforms.addCdcMetadata.timestamp.field": "_cdc_timestamp_micros",
+
+    "transforms.handleDeletes.type": "org.apache.kafka.connect.transforms.Filter",
+    "transforms.handleDeletes.predicate": "isDeleteEvent",
+    "transforms.handleDeletes.negate": "false",
+
+    "predicates": "isDeleteEvent",
+    "predicates.isDeleteEvent.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "predicates.isDeleteEvent.pattern": ".*",
+
+    "transforms.extractTtl.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+    "transforms.extractTtl.static.field": "_ttl_expiry_timestamp",
+
+    "db.timezone": "UTC",
+
+    "errors.tolerance": "all",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true",
+
+    "errors.deadletterqueue.topic.name": "dlq-events",
+    "errors.deadletterqueue.topic.replication.factor": "3",
+    "errors.deadletterqueue.context.headers.enable": "true",
+
+    "consumer.max.poll.records": "500",
+    "consumer.max.poll.interval.ms": "300000",
+
+    "connection.pool.max.size": "10",
+    "connection.pool.min.idle": "2"
+  }
+}

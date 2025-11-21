@@ -102,3 +102,111 @@ cdc_reconciliation_duration_seconds = Histogram(
     ['table'],
     buckets=(1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 600.0)
 )
+
+# User Story 1 Specific Metrics (T044)
+
+# Cassandra metrics
+cassandra_connection_errors_total = Counter(
+    'cassandra_connection_errors_total',
+    'Total Cassandra connection errors',
+    []
+)
+
+cassandra_query_duration_seconds = Histogram(
+    'cassandra_query_duration_seconds',
+    'Cassandra query execution time',
+    ['operation'],
+    buckets=(0.001, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0)
+)
+
+cassandra_active_connections = Gauge(
+    'cassandra_active_connections',
+    'Number of active Cassandra connections',
+    []
+)
+
+# PostgreSQL metrics
+postgresql_connection_errors_total = Counter(
+    'postgresql_connection_errors_total',
+    'Total PostgreSQL connection errors',
+    []
+)
+
+postgresql_query_duration_seconds = Histogram(
+    'postgresql_query_duration_seconds',
+    'PostgreSQL query execution time',
+    ['operation'],
+    buckets=(0.001, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0)
+)
+
+postgresql_active_connections = Gauge(
+    'postgresql_active_connections',
+    'Number of active PostgreSQL connections',
+    []
+)
+
+# Vault metrics
+vault_connection_errors_total = Counter(
+    'vault_connection_errors_total',
+    'Total Vault connection errors',
+    []
+)
+
+# Schema evolution metrics
+cdc_schema_changes_total = Counter(
+    'cdc_schema_changes_total',
+    'Total schema changes detected',
+    ['table', 'change_type']
+)
+
+cdc_schema_versions = Gauge(
+    'cdc_schema_versions',
+    'Current schema version by table',
+    ['table']
+)
+
+# Type mapping metrics
+cdc_type_conversion_errors_total = Counter(
+    'cdc_type_conversion_errors_total',
+    'Total type conversion errors',
+    ['cassandra_type', 'postgres_type']
+)
+
+# TTL preservation metrics
+cdc_ttl_records_total = Counter(
+    'cdc_ttl_records_total',
+    'Total records with TTL set',
+    ['table']
+)
+
+cdc_ttl_expired_records_total = Counter(
+    'cdc_ttl_expired_records_total',
+    'Total records deleted due to TTL expiration',
+    ['table']
+)
+
+# Conflict resolution metrics
+cdc_events_rejected_total = Counter(
+    'cdc_events_rejected_total',
+    'Total events rejected by conflict resolution',
+    ['table', 'reason']
+)
+
+cdc_conflict_resolution_total = Counter(
+    'cdc_conflict_resolution_total',
+    'Total conflict resolutions performed',
+    ['resolution']
+)
+
+# Kafka Connect metrics
+kafka_connect_task_failures_total = Counter(
+    'kafka_connect_task_failures_total',
+    'Total Kafka Connect task failures',
+    ['connector']
+)
+
+kafka_connect_connector_state = Gauge(
+    'kafka_connect_connector_state',
+    'Connector state (1=RUNNING, 0=STOPPED/FAILED)',
+    ['connector']
+)

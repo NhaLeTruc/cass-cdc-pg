@@ -142,28 +142,82 @@ CREATE TABLE IF NOT EXISTS _apscheduler_jobs (
 
 CREATE INDEX idx_apscheduler_jobs_next_run_time ON _apscheduler_jobs(next_run_time);
 
--- Replicated tables (created by connectors)
+-- Replicated tables (matching Cassandra schema with CDC metadata columns)
 CREATE TABLE IF NOT EXISTS cdc_users (
     id UUID PRIMARY KEY,
     username VARCHAR(255),
     email VARCHAR(255),
+    age INTEGER,
+    balance NUMERIC,
+    is_active BOOLEAN,
+    preferences JSONB,
+    tags TEXT[],
+    phone_numbers TEXT[],
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
+    _cdc_deleted BOOLEAN DEFAULT FALSE,
+    _cdc_timestamp_micros BIGINT,
     _cdc_inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    _cdc_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    _cdc_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    _ttl_expiry_timestamp TIMESTAMPTZ,
+    _last_event_id VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS cdc_orders (
     id UUID PRIMARY KEY,
     user_id UUID,
+    order_number BIGINT,
     total_amount NUMERIC,
     status VARCHAR(50),
+    items TEXT[],
+    metadata JSONB,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
+    _cdc_deleted BOOLEAN DEFAULT FALSE,
+    _cdc_timestamp_micros BIGINT,
     _cdc_inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    _cdc_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    _cdc_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    _ttl_expiry_timestamp TIMESTAMPTZ,
+    _last_event_id VARCHAR(255)
 );
+
+CREATE TABLE IF NOT EXISTS cdc_sessions (
+    session_id UUID PRIMARY KEY,
+    user_id UUID,
+    token TEXT,
+    created_at TIMESTAMPTZ,
+    _cdc_deleted BOOLEAN DEFAULT FALSE,
+    _cdc_timestamp_micros BIGINT,
+    _cdc_inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    _cdc_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    _ttl_expiry_timestamp TIMESTAMPTZ,
+    _last_event_id VARCHAR(255)
+);
+
+-- TTL cleanup function for sessions
+CREATE OR REPLACE FUNCTION delete_expired_ttl_records_cdc_sessions()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM cdc_sessions
+    WHERE _ttl_expiry_timestamp IS NOT NULL
+      AND _ttl_expiry_timestamp < NOW();
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS ttl_expiry_cleanup ON cdc_sessions;
+
+CREATE TRIGGER ttl_expiry_cleanup
+AFTER INSERT OR UPDATE ON cdc_sessions
+FOR EACH STATEMENT
+EXECUTE FUNCTION delete_expired_ttl_records_cdc_sessions();
+
+-- Indexes for CDC tracking
+CREATE INDEX idx_users_cdc_timestamp ON cdc_users(_cdc_timestamp_micros) WHERE _cdc_deleted = FALSE;
+CREATE INDEX idx_orders_cdc_timestamp ON cdc_orders(_cdc_timestamp_micros) WHERE _cdc_deleted = FALSE;
+CREATE INDEX idx_sessions_ttl_expiry ON cdc_sessions(_ttl_expiry_timestamp) WHERE _ttl_expiry_timestamp IS NOT NULL;
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO cdc_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO cdc_user;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO cdc_user;
