@@ -248,19 +248,19 @@ All paths relative to repository root:
 
 ### Tests for User Story 6 (TDD - MUST COMPLETE FIRST) ⚠️
 
-- [ ] T088 [P] [US6] Integration test for Vault credential retrieval in tests/integration/test_vault_credentials.py (start pipeline, verify Cassandra/PostgreSQL connections use credentials from Vault paths secret/data/cdc/cassandra and database/creds/postgresql-writer)
-- [ ] T089 [P] [US6] Integration test for credential rotation in tests/integration/test_credential_rotation.py (change Vault credential, wait 5 minutes, verify pipeline refreshes and continues working)
-- [ ] T090 [US6] Integration test for no credentials in logs in tests/integration/test_no_secrets_in_logs.py (run pipeline, grep logs for password/secret/token patterns, verify 0 matches)
+- [X] T088 [P] [US6] Integration test for Vault credential retrieval in tests/integration/test_vault_credentials.py (start pipeline, verify Cassandra/PostgreSQL connections use credentials from Vault paths secret/data/cdc/cassandra and database/creds/postgresql-writer)
+- [X] T089 [P] [US6] Integration test for credential rotation in tests/integration/test_credential_rotation.py (change Vault credential, wait 5 minutes, verify pipeline refreshes and continues working)
+- [X] T090 [US6] Integration test for no credentials in logs in tests/integration/test_no_secrets_in_logs.py (run pipeline, grep logs for password/secret/token patterns, verify 0 matches)
 
 ### Implementation for User Story 6
 
-- [ ] T091 [US6] Enhance VaultRepository with credential rotation (add refresh_credentials method checking lease TTL, auto-renewing before 24h expiry, caching credentials with 23h TTL)
-- [ ] T092 [US6] Configure Vault policies (docker/vault/policies/cdc-policy.hcl allowing read on secret/data/cdc/*, database/creds/postgresql-writer with AppRole authentication)
-- [ ] T093 [US6] Create Vault initialization script (docker/vault/init-secrets.sh to populate secret/cdc/cassandra with username/password, configure database/postgresql with dynamic credentials 24h TTL)
-- [ ] T094 [US6] Update settings.py to read from Vault (modify src/config/settings.py to use VaultRepository.get_credentials instead of environment variables in production mode)
-- [ ] T095 [US6] Configure Kafka Connect to use Vault credentials (set connection.user=${file:/secrets/postgres:username}, connection.password=${file:/secrets/postgres:password} in postgres-sink.json)
-- [ ] T096 [US6] Add TLS 1.3 configuration for all connections (Cassandra: ssl_context with TLSv1.3, PostgreSQL: sslmode=require sslprotocol=TLSv1.3, Kafka: security.protocol=SSL ssl.enabled.protocols=TLSv1.3)
-- [ ] T097 [US6] Verify no credentials in logs (update bandit pre-commit hook with patterns for password, secret, token, api_key, enforce in CI/CD)
+- [X] T091 [US6] Enhance VaultRepository with credential rotation (add refresh_credentials method checking lease TTL, auto-renewing before 24h expiry, caching credentials with 23h TTL)
+- [X] T092 [US6] Configure Vault policies (docker/vault/policies/cdc-policy.hcl allowing read on secret/data/cdc/*, database/creds/postgresql-writer with AppRole authentication)
+- [X] T093 [US6] Create Vault initialization script (docker/vault/init-secrets.sh to populate secret/cdc/cassandra with username/password, configure database/postgresql with dynamic credentials 24h TTL)
+- [X] T094 [US6] Update settings.py to read from Vault (modify src/config/settings.py to use VaultRepository.get_credentials instead of environment variables in production mode)
+- [X] T095 [US6] Configure Kafka Connect to use Vault credentials (set connection.user=${file:/secrets/postgres:username}, connection.password=${file:/secrets/postgres:password} in postgres-sink.json)
+- [X] T096 [US6] Add TLS 1.3 configuration for all connections (Cassandra: ssl_context with TLSv1.3, PostgreSQL: sslmode=require sslprotocol=TLSv1.3, Kafka: security.protocol=SSL ssl.enabled.protocols=TLSv1.3)
+- [X] T097 [US6] Verify no credentials in logs (update bandit pre-commit hook with patterns for password, secret, token, api_key, enforce in CI/CD)
 
 **Checkpoint**: All user stories 1-6 complete and production-ready
 

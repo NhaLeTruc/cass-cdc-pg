@@ -14,6 +14,10 @@ class CassandraSettings(BaseSettings):
     username: str = Field(default="cassandra", env="CASSANDRA_USERNAME")
     password: str = Field(default="cassandra", env="CASSANDRA_PASSWORD")
     datacenter: str = Field(default="dc1", env="CASSANDRA_DC")
+    tls_enabled: bool = Field(default=False, env="CASSANDRA_TLS_ENABLED")
+    tls_ca_cert: Optional[str] = Field(default=None, env="CASSANDRA_TLS_CA_CERT")
+    tls_client_cert: Optional[str] = Field(default=None, env="CASSANDRA_TLS_CLIENT_CERT")
+    tls_client_key: Optional[str] = Field(default=None, env="CASSANDRA_TLS_CLIENT_KEY")
 
 
 class PostgreSQLSettings(BaseSettings):
@@ -24,20 +28,36 @@ class PostgreSQLSettings(BaseSettings):
     user: str = Field(default="cdc_user", env="POSTGRES_USER")
     password: str = Field(default="cdc_password", env="POSTGRES_PASSWORD")
     schema: str = Field(default="public", env="POSTGRES_SCHEMA")
+    tls_enabled: bool = Field(default=False, env="POSTGRES_TLS_ENABLED")
+    tls_ca_cert: Optional[str] = Field(default=None, env="POSTGRES_TLS_CA_CERT")
+    tls_client_cert: Optional[str] = Field(default=None, env="POSTGRES_TLS_CLIENT_CERT")
+    tls_client_key: Optional[str] = Field(default=None, env="POSTGRES_TLS_CLIENT_KEY")
+    min_pool_size: int = Field(default=2, env="POSTGRES_MIN_POOL_SIZE")
+    max_pool_size: int = Field(default=10, env="POSTGRES_MAX_POOL_SIZE")
+    connect_timeout: int = Field(default=10, env="POSTGRES_CONNECT_TIMEOUT")
 
 
 class KafkaSettings(BaseSettings):
     """Kafka configuration settings"""
     bootstrap_servers: str = Field(default="localhost:9093", env="KAFKA_BOOTSTRAP_SERVERS")
     schema_registry_url: str = Field(default="http://localhost:8081", env="KAFKA_SCHEMA_REGISTRY_URL")
+    schema_registry_host: str = Field(default="localhost", env="SCHEMA_REGISTRY_HOST")
+    schema_registry_port: int = Field(default=8081, env="SCHEMA_REGISTRY_PORT")
     connect_url: str = Field(default="http://localhost:8083", env="KAFKA_CONNECT_URL")
+    tls_enabled: bool = Field(default=False, env="KAFKA_TLS_ENABLED")
+    tls_ca_cert: Optional[str] = Field(default=None, env="KAFKA_TLS_CA_CERT")
+    tls_client_cert: Optional[str] = Field(default=None, env="KAFKA_TLS_CLIENT_CERT")
+    tls_client_key: Optional[str] = Field(default=None, env="KAFKA_TLS_CLIENT_KEY")
 
 
 class VaultSettings(BaseSettings):
     """HashiCorp Vault settings"""
-    addr: str = Field(default="http://localhost:8200", env="VAULT_ADDR")
+    url: str = Field(default="http://localhost:8200", env="VAULT_ADDR")
     token: str = Field(default="dev-root-token", env="VAULT_TOKEN")
     namespace: str = Field(default="cdc", env="VAULT_NAMESPACE")
+    enabled: bool = Field(default=False, env="VAULT_ENABLED")
+    approle_role_id: Optional[str] = Field(default=None, env="VAULT_ROLE_ID")
+    approle_secret_id: Optional[str] = Field(default=None, env="VAULT_SECRET_ID")
 
 
 class PerformanceSettings(BaseSettings):
@@ -105,6 +125,36 @@ class Settings(BaseSettings):
     error_handling: ErrorHandlingSettings = Field(default_factory=ErrorHandlingSettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
     reconciliation: ReconciliationSettings = Field(default_factory=ReconciliationSettings)
+
+    def load_credentials_from_vault(self) -> None:
+        """
+        Load credentials from Vault in production mode.
+
+        If VAULT_ENABLED is True and environment is production,
+        fetches credentials from Vault and updates settings.
+        """
+        if not self.vault.enabled or self.environment == "development":
+            return
+
+        try:
+            from src.repositories.vault_repository import VaultRepository
+
+            vault_repo = VaultRepository(self)
+            vault_repo.connect()
+
+            cassandra_creds = vault_repo.get_credentials("cdc/cassandra", use_cache=True)
+            self.cassandra.username = cassandra_creds.get("username", self.cassandra.username)
+            self.cassandra.password = cassandra_creds.get("password", self.cassandra.password)
+
+            postgres_creds = vault_repo.get_database_credentials("postgresql-writer", use_cache=True)
+            self.postgresql.user = postgres_creds.get("username", self.postgresql.user)
+            self.postgresql.password = postgres_creds.get("password", self.postgresql.password)
+
+        except Exception as e:
+            import structlog
+            logger = structlog.get_logger(__name__)
+            logger.error("failed_to_load_vault_credentials", error=str(e))
+            raise
 
 
 # Global settings instance

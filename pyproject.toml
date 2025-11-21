@@ -160,3 +160,66 @@ omit = ["tests/*", "**/__pycache__/*", "**/.venv/*"]
 precision = 2
 show_missing = true
 skip_covered = false
+
+[tool.bandit]
+# Bandit security linter configuration
+# Checks for hardcoded passwords, secrets, and other security issues
+targets = ["src"]
+exclude_dirs = ["tests", ".venv", "build", "dist"]
+skips = []
+tests = [
+    "B105",  # hardcoded_password_string
+    "B106",  # hardcoded_password_funcarg
+    "B107",  # hardcoded_password_default
+    "B108",  # hardcoded_temp_file
+    "B110",  # try_except_pass
+    "B201",  # flask_debug_true
+    "B301",  # pickle usage
+    "B302",  # marshal usage
+    "B303",  # md5 or sha1 usage
+    "B304",  # ciphers usage
+    "B305",  # cipher_modes usage
+    "B306",  # mktemp_q usage
+    "B307",  # eval usage
+    "B308",  # mark_safe usage
+    "B309",  # httpsconnection usage
+    "B310",  # urllib_urlopen usage
+    "B311",  # random usage
+    "B312",  # telnetlib usage
+    "B313",  # xml_bad_cElementTree
+    "B314",  # xml_bad_ElementTree
+    "B315",  # xml_bad_expatreader
+    "B316",  # xml_bad_expatbuilder
+    "B317",  # xml_bad_sax
+    "B318",  # xml_bad_minidom
+    "B319",  # xml_bad_pulldom
+    "B320",  # xml_bad_etree
+    "B321",  # ftplib usage
+    "B323",  # unverified_context
+    "B324",  # hashlib usage
+    "B501",  # request_with_no_cert_validation
+    "B502",  # ssl_with_bad_version
+    "B503",  # ssl_with_bad_defaults
+    "B504",  # ssl_with_no_version
+    "B505",  # weak_cryptographic_key
+    "B506",  # yaml_load
+    "B507",  # ssh_no_host_key_verification
+    "B601",  # paramiko_calls
+    "B602",  # subprocess_popen_with_shell_equals_true
+    "B603",  # subprocess_without_shell_equals_true
+    "B604",  # any_other_function_with_shell_equals_true
+    "B605",  # start_process_with_a_shell
+    "B606",  # start_process_with_no_shell
+    "B607",  # start_process_with_partial_path
+    "B608",  # hardcoded_sql_expressions
+    "B609",  # linux_commands_wildcard_injection
+    "B610",  # django_extra_used
+    "B611",  # django_rawsql_used
+    "B701",  # jinja2_autoescape_false
+    "B702",  # use_of_mako_templates
+    "B703",  # django_mark_safe
+]
+
+# Patterns to detect in code
+[tool.bandit.assert_used]
+skips = ["*_test.py", "test_*.py"]
