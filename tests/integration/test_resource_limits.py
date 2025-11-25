@@ -16,19 +16,18 @@ class TestResourceLimits:
     MAX_TOTAL_MEMORY_BYTES = int(MAX_TOTAL_MEMORY_GB * 1024 * 1024 * 1024)
 
     EXPECTED_MEMORY_LIMITS = {
-        "cassandra": 1024,
-        "postgres": 512,
-        "kafka": 1024,
-        "schema-registry": 256,
-        "kafka-connect": 256,
-        "vault": 256,
-        "prometheus": 256,
-        "grafana": 256,
-        "jaeger": 256,
-        "zookeeper": 256,
+        "cdc-cassandra": 1024,
+        "cdc-postgres": 512,
+        "cdc-kafka": 1024,
+        "cdc-schema-registry": 256,
+        "cdc-kafka-connect": 256,
+        "cdc-vault": 256,
+        "cdc-prometheus": 256,
+        "cdc-grafana": 256,
+        "cdc-jaeger": 256,
+        "cdc-zookeeper": 256,
     }
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_total_docker_memory_under_4gb(self) -> None:
         """Test that total Docker memory usage is under 4GB."""
         memory_stats = self._get_container_memory_stats()
@@ -46,7 +45,6 @@ class TestResourceLimits:
 
         print(f"Total memory usage: {total_memory_gb:.2f}GB / {self.MAX_TOTAL_MEMORY_GB}GB")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_individual_service_memory_limits(self) -> None:
         """Test that each service respects its memory limit."""
         memory_stats = self._get_container_memory_stats()
@@ -67,7 +65,6 @@ class TestResourceLimits:
 
             print(f"{service}: {actual_usage_mb:.0f}MB / {expected_limit_mb}MB limit")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_memory_limits_configured_in_docker_compose(self) -> None:
         """Test that memory limits are properly configured in docker-compose.yml."""
         compose_config = self._get_docker_compose_config()
@@ -93,7 +90,6 @@ class TestResourceLimits:
                     f"{memory_limit_mb:.0f}MB exceeds expected {expected_limit_mb}MB"
                 )
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_cpu_limits_reasonable(self) -> None:
         """Test that CPU limits are reasonable for laptop development."""
         cpu_stats = self._get_container_cpu_stats()
@@ -105,7 +101,6 @@ class TestResourceLimits:
                 f"Service {service} using {cpu_percent:.1f}% CPU, should be <100%"
             )
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_no_memory_swapping(self) -> None:
         """Test that services are not heavily swapping memory."""
         memory_stats = self._get_container_memory_stats()
@@ -121,7 +116,6 @@ class TestResourceLimits:
                 f"may be swapping"
             )
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_disk_usage_reasonable(self) -> None:
         """Test that Docker disk usage is reasonable for local development."""
         disk_usage = self._get_docker_disk_usage()
@@ -202,7 +196,7 @@ class TestResourceLimits:
     def _get_docker_compose_config(self) -> Dict[str, Any]:
         """Get parsed docker-compose.yml configuration."""
         result = subprocess.run(
-            ["docker-compose", "config"],
+            ["docker", "compose", "config"],
             capture_output=True,
             text=True,
             cwd="/home/bob/WORK/cass-cdc-pg",
@@ -271,8 +265,12 @@ class TestResourceLimits:
 
     def _extract_service_name(self, container_name: str) -> str:
         """Extract service name from container name."""
+        # Docker container names may have project prefix, e.g., "cass-cdc-pg-cdc-kafka-1"
+        # We need to match against our expected service names with "cdc-" prefix
         for service in self.EXPECTED_MEMORY_LIMITS.keys():
             if service in container_name.lower():
                 return service
 
-        return container_name.split("_")[0] if "_" in container_name else container_name
+        # Fallback: try to extract base service name and add cdc- prefix
+        base_name = container_name.split("-")[-2] if "-" in container_name else container_name
+        return f"cdc-{base_name}" if not base_name.startswith("cdc-") else base_name

@@ -63,7 +63,9 @@ services:
 
   # Kafka Connect
   kafka-connect:
-    image: confluentinc/cp-kafka-connect:7.5.2
+    build:
+      context: ./docker/kafka-connect
+      dockerfile: Dockerfile
     container_name: cdc-kafka-connect
     depends_on:
       - kafka

@@ -11,7 +11,6 @@ logger = structlog.get_logger(__name__)
 class TestNoSecretsInLogs:
     """Test that credentials never appear in logs."""
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_no_passwords_in_logs(self):
         """
         Test that passwords are filtered from logs.
@@ -22,12 +21,12 @@ class TestNoSecretsInLogs:
 
         # Get logs from all containers
         services = [
-            "kafka-connect",
-            "cassandra",
-            "postgres",
-            "vault",
-            "kafka",
-            "schema-registry",
+            "cdc-kafka-connect",
+            "cdc-cassandra",
+            "cdc-postgres",
+            "cdc-vault",
+            "cdc-kafka",
+            "cdc-schema-registry",
         ]
 
         password_patterns = [
@@ -81,7 +80,6 @@ class TestNoSecretsInLogs:
 
         logger.info("test_no_passwords_in_logs_success")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_no_secrets_in_logs(self):
         """
         Test that secret tokens are filtered from logs.
@@ -90,7 +88,7 @@ class TestNoSecretsInLogs:
         """
         logger.info("test_no_secrets_in_logs_start")
 
-        services = ["kafka-connect", "cassandra", "postgres", "vault"]
+        services = ["cdc-kafka-connect", "cdc-cassandra", "cdc-postgres", "cdc-vault"]
 
         secret_patterns = [
             r"secret['\"]?\s*[:=]\s*['\"]?([a-zA-Z0-9+/=]{20,})",  # secret: long_value
@@ -145,7 +143,6 @@ class TestNoSecretsInLogs:
 
         logger.info("test_no_secrets_in_logs_success")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_structured_logging_filters_credentials(self):
         """
         Test that structlog configuration filters credential fields.
@@ -179,7 +176,6 @@ class TestNoSecretsInLogs:
             logger.warning("logging_config_not_available", error=str(e))
             pytest.skip("Logging configuration not available")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_bandit_security_scan_configured(self):
         """
         Test that bandit pre-commit hook is configured.
@@ -208,7 +204,6 @@ class TestNoSecretsInLogs:
             logger.warning("pre_commit_config_not_found")
             pytest.skip(".pre-commit-config.yaml not found")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_vault_token_not_in_logs(self):
         """
         Test that Vault tokens are never logged.
@@ -226,7 +221,7 @@ class TestNoSecretsInLogs:
 
         try:
             result = subprocess.run(
-                ["docker", "compose", "logs", "--tail", "1000", "vault"],
+                ["docker", "compose", "logs", "--tail", "1000", "cdc-vault"],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -262,7 +257,6 @@ class TestNoSecretsInLogs:
 
         logger.info("test_vault_token_not_in_logs_success")
 
-    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_connection_strings_sanitized(self):
         """
         Test that database connection strings are sanitized in logs.
@@ -279,7 +273,7 @@ class TestNoSecretsInLogs:
 
         total_connection_string_matches = 0
 
-        services = ["kafka-connect", "postgres"]
+        services = ["cdc-kafka-connect", "cdc-postgres"]
 
         for service in services:
             try:
