@@ -274,58 +274,58 @@ All paths relative to repository root:
 
 ### Tests for User Story 7 (TDD - MUST COMPLETE FIRST) ⚠️
 
-- [ ] T108 [P] [US7] Integration test for row count reconciliation in tests/integration/test_reconciliation_row_count.py (insert 1000 in Cassandra, delete 50 from PostgreSQL, run reconciliation, verify drift_percentage=5%)
-- [ ] T109 [P] [US7] Integration test for checksum validation in tests/integration/test_reconciliation_checksum.py (modify 10 records in PostgreSQL, run checksum reconciliation, verify 10 DATA_MISMATCH records)
-- [ ] T110 [P] [US7] Integration test for hourly scheduled reconciliation in tests/integration/test_reconciliation_scheduled.py (wait for scheduled job, verify ReconciliationJob created with job_type=HOURLY_SCHEDULED)
-- [ ] T111 [P] [US7] Integration test for Prometheus metrics in tests/integration/test_reconciliation_metrics.py (run reconciliation, query /metrics, verify cdc_reconciliation_drift_percentage gauge present)
-- [ ] T112 [US7] Integration test for AlertManager alert firing in tests/integration/test_reconciliation_alerts.py (create 10% drift, wait 5 minutes, verify ReconciliationDriftCritical alert in AlertManager API)
+- [X] T108 [P] [US7] Integration test for row count reconciliation in tests/integration/test_reconciliation_row_count.py (insert 1000 in Cassandra, delete 50 from PostgreSQL, run reconciliation, verify drift_percentage=5%)
+- [X] T109 [P] [US7] Integration test for checksum validation in tests/integration/test_reconciliation_checksum.py (modify 10 records in PostgreSQL, run checksum reconciliation, verify 10 DATA_MISMATCH records)
+- [X] T110 [P] [US7] Integration test for hourly scheduled reconciliation in tests/integration/test_reconciliation_scheduled.py (wait for scheduled job, verify ReconciliationJob created with job_type=HOURLY_SCHEDULED)
+- [X] T111 [P] [US7] Integration test for Prometheus metrics in tests/integration/test_reconciliation_metrics.py (run reconciliation, query /metrics, verify cdc_reconciliation_drift_percentage gauge present)
+- [X] T112 [US7] Integration test for AlertManager alert firing in tests/integration/test_reconciliation_alerts.py (create 10% drift, wait 5 minutes, verify ReconciliationDriftCritical alert in AlertManager API)
 
 ### Data Models for User Story 7
 
-- [ ] T113 [P] [US7] Create ReconciliationJob model in src/models/reconciliation_job.py (job_id, table_name, job_type enum: HOURLY_SCHEDULED/MANUAL_ONDEMAND, validation_strategy enum: ROW_COUNT/CHECKSUM/TIMESTAMP_RANGE/SAMPLE, started_at, completed_at, status enum: RUNNING/COMPLETED/FAILED, cassandra_row_count, postgres_row_count, mismatch_count, drift_percentage, validation_errors JSONB, alert_fired bool)
-- [ ] T114 [P] [US7] Create ReconciliationMismatch model in src/models/reconciliation_mismatch.py (mismatch_id, job_id FK, table_name, primary_key_value, mismatch_type enum: MISSING_IN_POSTGRES/MISSING_IN_CASSANDRA/DATA_MISMATCH, cassandra_checksum, postgres_checksum, cassandra_data JSONB, postgres_data JSONB, detected_at, resolution_status enum: PENDING/AUTO_RESOLVED/MANUAL_RESOLVED/IGNORED, resolution_notes, resolved_at)
+- [X] T113 [P] [US7] Create ReconciliationJob model in src/models/reconciliation_job.py (job_id, table_name, job_type enum: HOURLY_SCHEDULED/MANUAL_ONDEMAND, validation_strategy enum: ROW_COUNT/CHECKSUM/TIMESTAMP_RANGE/SAMPLE, started_at, completed_at, status enum: RUNNING/COMPLETED/FAILED, cassandra_row_count, postgres_row_count, mismatch_count, drift_percentage, validation_errors JSONB, alert_fired bool)
+- [X] T114 [P] [US7] Create ReconciliationMismatch model in src/models/reconciliation_mismatch.py (mismatch_id, job_id FK, table_name, primary_key_value, mismatch_type enum: MISSING_IN_POSTGRES/MISSING_IN_CASSANDRA/DATA_MISMATCH, cassandra_checksum, postgres_checksum, cassandra_data JSONB, postgres_data JSONB, detected_at, resolution_status enum: PENDING/AUTO_RESOLVED/MANUAL_RESOLVED/IGNORED, resolution_notes, resolved_at)
 
 ### Repositories for User Story 7
 
-- [ ] T115 [US7] Implement ReconciliationRepository in src/repositories/reconciliation_repository.py (create_job, update_job, get_job, list_jobs with filters, create_mismatch, list_mismatches with filters, resolve_mismatch methods accessing _cdc_reconciliation_jobs and _cdc_reconciliation_mismatches tables)
+- [X] T115 [US7] Implement ReconciliationRepository in src/repositories/reconciliation_repository.py (create_job, update_job, get_job, list_jobs with filters, create_mismatch, list_mismatches with filters, resolve_mismatch methods accessing _cdc_reconciliation_jobs and _cdc_reconciliation_mismatches tables)
 
 ### Services for User Story 7
 
-- [ ] T116 [US7] Implement ReconciliationEngine in src/services/reconciliation_engine.py (run_row_count_validation, run_checksum_validation, run_timestamp_range_validation, run_sample_validation methods comparing Cassandra vs PostgreSQL)
-- [ ] T117 [US7] Implement AlertService in src/services/alert_service.py (send_alert_to_prometheus method using prometheus pushgateway, format_alert_message, determine_alert_severity based on drift thresholds)
-- [ ] T118 [US7] Implement ReconciliationScheduler in src/services/reconciliation_scheduler.py (using APScheduler with hourly IntervalTrigger, PostgreSQLJobStore, schedule_reconciliation_for_all_tables method, manual_trigger_reconciliation method)
+- [X] T116 [US7] Implement ReconciliationEngine in src/services/reconciliation_engine.py (run_row_count_validation, run_checksum_validation, run_timestamp_range_validation, run_sample_validation methods comparing Cassandra vs PostgreSQL)
+- [X] T117 [US7] Implement AlertService in src/services/alert_service.py (send_alert_to_prometheus method using prometheus pushgateway, format_alert_message, determine_alert_severity based on drift thresholds)
+- [X] T118 [US7] Implement ReconciliationScheduler in src/services/reconciliation_scheduler.py (using APScheduler with hourly IntervalTrigger, PostgreSQLJobStore, schedule_reconciliation_for_all_tables method, manual_trigger_reconciliation method)
 
 ### API Endpoints for User Story 7
 
-- [ ] T119 [P] [US7] Create reconciliation trigger endpoint in src/api/routes/reconciliation.py (POST /reconciliation/trigger accepting tables list and validation_strategy, returns job_ids)
-- [ ] T120 [P] [US7] Create reconciliation jobs query endpoint in src/api/routes/reconciliation.py (GET /reconciliation/jobs with filters: table, status, from_date, to_date, pagination)
-- [ ] T121 [P] [US7] Create reconciliation job detail endpoint in src/api/routes/reconciliation.py (GET /reconciliation/jobs/{job_id} returning ReconciliationJob with nested mismatches list)
-- [ ] T122 [P] [US7] Create mismatches query endpoint in src/api/routes/reconciliation.py (GET /reconciliation/mismatches with filters: table, mismatch_type, resolution_status, pagination)
-- [ ] T123 [P] [US7] Create mismatch resolution endpoint in src/api/routes/reconciliation.py (POST /reconciliation/mismatches/{mismatch_id}/resolve accepting resolution_status and resolution_notes)
-- [ ] T138 [P] [US7] Create GDPR erasure endpoint in src/api/routes/gdpr.py (DELETE /records/{keyspace}/{table}/{primary_key} with cascading delete in Cassandra and PostgreSQL, audit to _cdc_audit_log with requester, timestamp, record_identifier, reason)
-- [ ] T139 [P] [US7] Integration test for GDPR erasure in tests/integration/test_gdpr_erasure.py (create record, call DELETE endpoint, verify removed from both Cassandra and PostgreSQL, verify audit log entry created)
+- [X] T119 [P] [US7] Create reconciliation trigger endpoint in src/api/routes/reconciliation.py (POST /reconciliation/trigger accepting tables list and validation_strategy, returns job_ids)
+- [X] T120 [P] [US7] Create reconciliation jobs query endpoint in src/api/routes/reconciliation.py (GET /reconciliation/jobs with filters: table, status, from_date, to_date, pagination)
+- [X] T121 [P] [US7] Create reconciliation job detail endpoint in src/api/routes/reconciliation.py (GET /reconciliation/jobs/{job_id} returning ReconciliationJob with nested mismatches list)
+- [X] T122 [P] [US7] Create mismatches query endpoint in src/api/routes/reconciliation.py (GET /reconciliation/mismatches with filters: table, mismatch_type, resolution_status, pagination)
+- [X] T123 [P] [US7] Create mismatch resolution endpoint in src/api/routes/reconciliation.py (POST /reconciliation/mismatches/{mismatch_id}/resolve accepting resolution_status and resolution_notes)
+- [X] T138 [P] [US7] Create GDPR erasure endpoint in src/api/routes/gdpr.py (DELETE /records/{keyspace}/{table}/{primary_key} with cascading delete in Cassandra and PostgreSQL, audit to _cdc_audit_log with requester, timestamp, record_identifier, reason)
+- [X] T139 [P] [US7] Integration test for GDPR erasure in tests/integration/test_gdpr_erasure.py (create record, call DELETE endpoint, verify removed from both Cassandra and PostgreSQL, verify audit log entry created)
 
 ### Database Schema for User Story 7
 
-- [ ] T124 [US7] Create reconciliation control tables in docker/postgres/init-db.sql (_cdc_reconciliation_jobs table with indexes on table_name+status and started_at, _cdc_reconciliation_mismatches table with indexes on job_id and table_name+resolution_status, _apscheduler_jobs table for APScheduler persistence)
+- [X] T124 [US7] Create reconciliation control tables in docker/postgres/init-db.sql (_cdc_reconciliation_jobs table with indexes on table_name+status and started_at, _cdc_reconciliation_mismatches table with indexes on job_id and table_name+resolution_status, _apscheduler_jobs table for APScheduler persistence)
 
 ### Monitoring for User Story 7
 
-- [ ] T125 [US7] Add reconciliation metrics to src/monitoring/metrics.py (cdc_reconciliation_drift_percentage gauge by table, cdc_reconciliation_cassandra_rows gauge, cdc_reconciliation_postgres_rows gauge, cdc_reconciliation_mismatches_total counter by table+type, cdc_reconciliation_jobs_completed_total counter by table+status, cdc_reconciliation_duration_seconds histogram)
-- [ ] T126 [US7] Add reconciliation alerting rules to docker/monitoring/prometheus-alerts.yml (ReconciliationDriftWarning for 1-5% drift, ReconciliationDriftCritical for >5% drift, ReconciliationJobFailed for >3 failures per hour)
-- [ ] T127 [US7] Create reconciliation Grafana dashboard in docker/monitoring/grafana/dashboards/reconciliation.json (drift percentage by table timeseries, mismatch count by type, job success rate, reconciliation duration distribution)
+- [X] T125 [US7] Add reconciliation metrics to src/monitoring/metrics.py (cdc_reconciliation_drift_percentage gauge by table, cdc_reconciliation_cassandra_rows gauge, cdc_reconciliation_postgres_rows gauge, cdc_reconciliation_mismatches_total counter by table+type, cdc_reconciliation_jobs_completed_total counter by table+status, cdc_reconciliation_duration_seconds histogram)
+- [X] T126 [US7] Add reconciliation alerting rules to docker/monitoring/prometheus-alerts.yml (ReconciliationDriftWarning for 1-5% drift, ReconciliationDriftCritical for >5% drift, ReconciliationJobFailed for >3 failures per hour)
+- [X] T127 [US7] Create reconciliation Grafana dashboard in docker/monitoring/grafana/dashboards/reconciliation.json (drift percentage by table timeseries, mismatch count by type, job success rate, reconciliation duration distribution)
 
 ### Integration for User Story 7
 
-- [ ] T128 [US7] Configure Prometheus pushgateway in docker/docker-compose.yml (add pushgateway service on port 9091 for AlertService to push alerts)
-- [ ] T129 [US7] Configure AlertManager in docker/docker-compose.yml (add alertmanager service on port 9093, configure alert routing to email/Slack/PagerDuty)
-- [ ] T130 [US7] Add reconciliation scheduler startup to src/api/main.py (initialize ReconciliationScheduler on FastAPI startup event, start hourly jobs if RECONCILIATION_ENABLED=true)
-- [ ] T131 [US7] Add reconciliation configuration to src/config/settings.py (RECONCILIATION_ENABLED, RECONCILIATION_INTERVAL_MINUTES=60, RECONCILIATION_DRIFT_WARNING_THRESHOLD=1.0, RECONCILIATION_DRIFT_CRITICAL_THRESHOLD=5.0, RECONCILIATION_SAMPLE_SIZE=1000, RECONCILIATION_TABLES list)
+- [X] T128 [US7] Configure Prometheus pushgateway in docker/docker-compose.yml (add pushgateway service on port 9091 for AlertService to push alerts)
+- [X] T129 [US7] Configure AlertManager in docker/docker-compose.yml (add alertmanager service on port 9093, configure alert routing to email/Slack/PagerDuty)
+- [X] T130 [US7] Add reconciliation scheduler startup to src/api/main.py (initialize ReconciliationScheduler on FastAPI startup event, start hourly jobs if RECONCILIATION_ENABLED=true)
+- [X] T131 [US7] Add reconciliation configuration to src/config/settings.py (RECONCILIATION_ENABLED, RECONCILIATION_INTERVAL_MINUTES=60, RECONCILIATION_DRIFT_WARNING_THRESHOLD=1.0, RECONCILIATION_DRIFT_CRITICAL_THRESHOLD=5.0, RECONCILIATION_SAMPLE_SIZE=1000, RECONCILIATION_TABLES list)
 
 ### Documentation for User Story 7
 
-- [ ] T132 [US7] Document reconciliation feature in docs/reconciliation.md (architecture, validation strategies, alerting thresholds, API usage examples, troubleshooting common drift scenarios)
-- [ ] T133 [US7] Update README.md with reconciliation section (overview, configuration options, how to trigger manual reconciliation, how to review reconciliation reports)
+- [X] T132 [US7] Document reconciliation feature in docs/reconciliation.md (architecture, validation strategies, alerting thresholds, API usage examples, troubleshooting common drift scenarios)
+- [X] T133 [US7] Update README.md with reconciliation section (overview, configuration options, how to trigger manual reconciliation, how to review reconciliation reports)
 
 **Checkpoint**: All user stories 1-7 complete with data consistency validation
 
