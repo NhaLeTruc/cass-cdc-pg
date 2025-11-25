@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cass-cdc-pg.fullname" . }}-kafka-connect
+  labels:
+    {{- include "cass-cdc-pg.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka-connect
+spec:
+  {{- if not .Values.kafkaConnect.autoscaling.enabled }}
+  replicas: {{ .Values.kafkaConnect.replicaCount }}
+  {{- end }}
+  strategy:
+    {{- toYaml .Values.updateStrategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "cass-cdc-pg.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kafka-connect
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "cass-cdc-pg.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: kafka-connect
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "cass-cdc-pg.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.kafkaConnect.securityContext | nindent 8 }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kafka-connect
+          image: "{{ .Values.global.imageRegistry | default .Values.kafkaConnect.image.repository }}:{{ .Values.kafkaConnect.image.tag }}"
+          imagePullPolicy: {{ .Values.kafkaConnect.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8083
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.kafkaConnect.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- with .Values.kafkaConnect.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.kafkaConnect.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.kafkaConnect.livenessProbe.httpGet.path }}
+              port: {{ .Values.kafkaConnect.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.kafkaConnect.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.kafkaConnect.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.kafkaConnect.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.kafkaConnect.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.kafkaConnect.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.kafkaConnect.readinessProbe.httpGet.path }}
+              port: {{ .Values.kafkaConnect.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.kafkaConnect.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.kafkaConnect.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.kafkaConnect.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.kafkaConnect.readinessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.kafkaConnect.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.configMaps.connectors.enabled }}
+            - name: connector-configs
+              mountPath: {{ .Values.configMaps.connectors.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.vault.enabled }}
+            - name: vault-secrets
+              mountPath: /vault/secrets
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- if and .Values.vault.enabled .Values.vault.agent.enabled }}
+        - name: vault-agent
+          image: "{{ .Values.vault.agent.image.repository }}:{{ .Values.vault.agent.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            - agent
+            - -config=/vault/config/agent.hcl
+          env:
+            - name: VAULT_ADDR
+              value: {{ .Values.vault.address }}
+          resources:
+            {{- toYaml .Values.vault.agent.resources | nindent 12 }}
+          volumeMounts:
+            - name: vault-config
+              mountPath: /vault/config
+              readOnly: true
+            - name: vault-secrets
+              mountPath: /vault/secrets
+        {{- end }}
+      volumes:
+        {{- if .Values.configMaps.connectors.enabled }}
+        - name: connector-configs
+          configMap:
+            name: {{ include "cass-cdc-pg.fullname" . }}-connectors
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        - name: vault-config
+          configMap:
+            name: {{ include "cass-cdc-pg.fullname" . }}-vault-agent
+        - name: vault-secrets
+          emptyDir:
+            medium: Memory
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.kafkaConnect.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kafkaConnect.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kafkaConnect.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.dnsPolicy }}
+      dnsPolicy: {{ . }}
+      {{- end }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

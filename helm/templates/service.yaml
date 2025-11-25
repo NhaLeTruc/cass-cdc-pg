@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cass-cdc-pg.fullname" . }}-kafka-connect
+  labels:
+    {{- include "cass-cdc-pg.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka-connect
+  {{- with .Values.kafkaConnect.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.kafkaConnect.service.type }}
+  ports:
+    - port: {{ .Values.kafkaConnect.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cass-cdc-pg.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka-connect

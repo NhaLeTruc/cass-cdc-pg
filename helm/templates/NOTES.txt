@@ -1,0 +1,80 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your CDC pipeline has been deployed to Kubernetes.
+
+1. Get the Kafka Connect service URL:
+
+{{- if contains "NodePort" .Values.kafkaConnect.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "cass-cdc-pg.fullname" . }}-kafka-connect)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.kafkaConnect.service.type }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        You can watch the status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "cass-cdc-pg.fullname" . }}-kafka-connect'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "cass-cdc-pg.fullname" . }}-kafka-connect --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.kafkaConnect.service.port }}
+{{- else if contains "ClusterIP" .Values.kafkaConnect.service.type }}
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "cass-cdc-pg.fullname" . }}-kafka-connect 8083:8083
+  echo "Visit http://127.0.0.1:8083 to access Kafka Connect REST API"
+{{- end }}
+
+2. Check Kafka Connect status:
+
+  curl http://localhost:8083/
+
+3. List installed connectors:
+
+  curl http://localhost:8083/connectors
+
+4. Deploy connectors (if not already deployed):
+
+{{- if .Values.connectors.cassandraSource.enabled }}
+  # Cassandra Source Connector
+  curl -X POST http://localhost:8083/connectors \
+    -H "Content-Type: application/json" \
+    -d @/etc/kafka-connect/connectors/cassandra-source.json
+{{- end }}
+
+{{- if .Values.connectors.postgresqlSink.enabled }}
+  # PostgreSQL Sink Connector
+  curl -X POST http://localhost:8083/connectors \
+    -H "Content-Type: application/json" \
+    -d @/etc/kafka-connect/connectors/postgres-sink.json
+{{- end }}
+
+5. Monitor connector status:
+
+  curl http://localhost:8083/connectors/{{ .Values.connectors.cassandraSource.name }}/status
+  curl http://localhost:8083/connectors/{{ .Values.connectors.postgresqlSink.name }}/status
+
+6. View logs:
+
+  kubectl logs -f --namespace {{ .Release.Namespace }} -l app.kubernetes.io/component=kafka-connect
+
+7. Scale the deployment:
+
+  kubectl scale --namespace {{ .Release.Namespace }} deployment/{{ include "cass-cdc-pg.fullname" . }}-kafka-connect --replicas=5
+
+{{- if .Values.monitoring.prometheus.enabled }}
+
+8. Access Prometheus metrics:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "cass-cdc-pg.fullname" . }}-kafka-connect 8083:8083
+  curl http://localhost:8083{{ .Values.monitoring.prometheus.path }}
+{{- end }}
+
+{{- if .Values.vault.enabled }}
+
+9. Vault Integration:
+
+  Your deployment is configured to use HashiCorp Vault for secrets management.
+  Ensure that:
+  - Vault is accessible at: {{ .Values.vault.address }}
+  - Kubernetes auth is enabled in Vault
+  - The role "{{ .Values.vault.kubernetesAuth.role }}" is configured
+  - Required secrets are stored at the configured paths
+{{- end }}
+
+For more information, visit:
+- Documentation: https://github.com/yourusername/cass-cdc-pg/blob/main/README.md
+- Kafka Connect REST API: https://docs.confluent.io/platform/current/connect/references/restapi.html

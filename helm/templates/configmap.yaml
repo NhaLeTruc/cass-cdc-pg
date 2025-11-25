@@ -1,0 +1,63 @@
+{{- if .Values.configMaps.connectors.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cass-cdc-pg.fullname" . }}-connectors
+  labels:
+    {{- include "cass-cdc-pg.labels" . | nindent 4 }}
+data:
+  {{- if .Values.connectors.cassandraSource.enabled }}
+  cassandra-source.json: |
+    {
+      "name": "{{ .Values.connectors.cassandraSource.name }}",
+      "config": {{ .Values.connectors.cassandraSource.config | toJson | nindent 8 }}
+    }
+  {{- end }}
+  {{- if .Values.connectors.postgresqlSink.enabled }}
+  postgres-sink.json: |
+    {
+      "name": "{{ .Values.connectors.postgresqlSink.name }}",
+      "config": {{ .Values.connectors.postgresqlSink.config | toJson | nindent 8 }}
+    }
+  {{- end }}
+{{- end }}
+---
+{{- if and .Values.vault.enabled .Values.vault.agent.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cass-cdc-pg.fullname" . }}-vault-agent
+  labels:
+    {{- include "cass-cdc-pg.labels" . | nindent 4 }}
+data:
+  agent.hcl: |
+    pid_file = "/tmp/pidfile"
+
+    vault {
+      address = "{{ .Values.vault.address }}"
+    }
+
+    {{- if eq .Values.vault.authMethod "kubernetes" }}
+    auto_auth {
+      method "kubernetes" {
+        mount_path = "auth/kubernetes"
+        config = {
+          role = "{{ .Values.vault.kubernetesAuth.role }}"
+        }
+      }
+
+      sink "file" {
+        config = {
+          path = "/vault/secrets/.vault-token"
+        }
+      }
+    }
+    {{- end }}
+
+    {{- range $name, $secret := .Values.vault.secrets }}
+    template {
+      source      = "/vault/templates/{{ $name }}.tpl"
+      destination = "/vault/secrets/{{ $name }}"
+    }
+    {{- end }}
+{{- end }}

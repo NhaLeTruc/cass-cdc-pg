@@ -1,0 +1,21 @@
+apiVersion: v2
+name: cass-cdc-pg
+description: Cassandra to PostgreSQL CDC Pipeline - Production-grade Change Data Capture with Kafka Connect
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - cdc
+  - cassandra
+  - postgresql
+  - kafka
+  - debezium
+  - data-replication
+home: https://github.com/yourusername/cass-cdc-pg
+sources:
+  - https://github.com/yourusername/cass-cdc-pg
+maintainers:
+  - name: CDC Team
+    email: cdc-team@example.com
+dependencies: []
+icon: https://raw.githubusercontent.com/apache/kafka/trunk/logo.png
