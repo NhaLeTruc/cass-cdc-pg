@@ -28,6 +28,7 @@ Requirements:
 import logging
 import os
 import random
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -92,33 +93,36 @@ class VerificationQueue:
     def __init__(self, max_size: int = 100000):
         self.max_size = max_size
         self.events: Dict[str, BenchmarkEvent] = {}
-        self._lock = None  # Would use threading.Lock in production
+        self._lock = threading.Lock()
 
     def add(self, event: BenchmarkEvent) -> None:
-        """Add event to verification queue."""
-        if len(self.events) >= self.max_size:
-            # Remove oldest unverified event
-            oldest_id = min(self.events.keys(), key=lambda k: self.events[k].timestamp)
-            del self.events[oldest_id]
+        """Add event to verification queue (thread-safe)."""
+        with self._lock:
+            if len(self.events) >= self.max_size:
+                # Remove oldest unverified event
+                oldest_id = min(self.events.keys(), key=lambda k: self.events[k].timestamp)
+                del self.events[oldest_id]
 
-        self.events[event.event_id] = event
-        verification_queue_depth.set(len(self.events))
+            self.events[event.event_id] = event
+            verification_queue_depth.set(len(self.events))
 
     def verify(self, event_id: str) -> Optional[float]:
-        """Mark event as verified and return latency."""
-        if event_id in self.events:
-            event = self.events[event_id]
-            if not event.verified:
-                latency = time.time() - event.timestamp
-                event.verified = True
-                events_verified.labels(status='success').inc()
-                replication_latency.observe(latency)
-                return latency
+        """Mark event as verified and return latency (thread-safe)."""
+        with self._lock:
+            if event_id in self.events:
+                event = self.events[event_id]
+                if not event.verified:
+                    latency = time.time() - event.timestamp
+                    event.verified = True
+                    events_verified.labels(status='success').inc()
+                    replication_latency.observe(latency)
+                    return latency
         return None
 
     def get_unverified_count(self) -> int:
-        """Get count of unverified events."""
-        return sum(1 for e in self.events.values() if not e.verified)
+        """Get count of unverified events (thread-safe)."""
+        with self._lock:
+            return sum(1 for e in self.events.values() if not e.verified)
 
 
 # Global verification queue

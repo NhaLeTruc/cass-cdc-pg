@@ -1,122 +1,164 @@
-"""Health check endpoint."""
+"""Health check endpoint using HealthCheckService."""
 
 from datetime import datetime
 from typing import Dict, Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
-import requests
 import structlog
 
-from cassandra.cluster import Cluster
-import psycopg2
+from src.config.settings import Settings
+from src.monitoring.health_check import HealthCheckService, HealthStatus
+from src.repositories.cassandra_repository import CassandraRepository
+from src.repositories.postgresql_repository import PostgreSQLRepository
+from src.repositories.vault_repository import VaultRepository
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-
-async def check_cassandra() -> Dict[str, Any]:
-    """Check Cassandra health."""
-    try:
-        cluster = Cluster(["localhost"], port=9042)
-        session = cluster.connect()
-        session.execute("SELECT release_version FROM system.local")
-        cluster.shutdown()
-        return {"status": "healthy"}
-    except Exception as e:
-        logger.error("cassandra_health_check_failed", error=str(e))
-        return {"status": "unhealthy", "message": str(e)}
+# Global service instances (initialized once)
+_health_service: HealthCheckService | None = None
+_cassandra_repo: CassandraRepository | None = None
+_postgres_repo: PostgreSQLRepository | None = None
+_vault_repo: VaultRepository | None = None
 
 
-async def check_postgresql() -> Dict[str, Any]:
-    """Check PostgreSQL health."""
-    try:
-        conn = psycopg2.connect(
-            host="localhost",
-            port=5432,
-            database="warehouse",
-            user="cdc_user",
-            password="cdc_password",
-        )
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.close()
-        conn.close()
-        return {"status": "healthy"}
-    except Exception as e:
-        logger.error("postgresql_health_check_failed", error=str(e))
-        return {"status": "unhealthy", "message": str(e)}
+def get_health_service() -> HealthCheckService:
+    """Get or create health check service with repository instances."""
+    global _health_service, _cassandra_repo, _postgres_repo, _vault_repo
 
+    if _health_service is None:
+        settings = Settings()
 
-async def check_kafka() -> Dict[str, Any]:
-    """Check Kafka health via Kafka Connect."""
-    try:
-        response = requests.get("http://localhost:8083/", timeout=5)
-        if response.status_code == 200:
-            return {"status": "healthy"}
-        return {"status": "unhealthy", "message": f"Status code: {response.status_code}"}
-    except Exception as e:
-        logger.error("kafka_health_check_failed", error=str(e))
-        return {"status": "unhealthy", "message": str(e)}
+        try:
+            # Initialize repositories
+            _cassandra_repo = CassandraRepository(settings=settings)
+            _cassandra_repo.connect()
 
+            _postgres_repo = PostgreSQLRepository(settings=settings)
+            _postgres_repo.connect()
 
-async def check_schema_registry() -> Dict[str, Any]:
-    """Check Schema Registry health."""
-    try:
-        response = requests.get("http://localhost:8081/subjects", timeout=5)
-        if response.status_code == 200:
-            return {"status": "healthy"}
-        return {"status": "unhealthy", "message": f"Status code: {response.status_code}"}
-    except Exception as e:
-        logger.error("schema_registry_health_check_failed", error=str(e))
-        return {"status": "unhealthy", "message": str(e)}
+            _vault_repo = VaultRepository(settings=settings)
+            _vault_repo.connect()
 
+            # Create health service
+            _health_service = HealthCheckService(
+                cassandra_repo=_cassandra_repo,
+                postgres_repo=_postgres_repo,
+                vault_repo=_vault_repo,
+                settings=settings
+            )
 
-async def check_vault() -> Dict[str, Any]:
-    """Check Vault health."""
-    try:
-        response = requests.get("http://localhost:8200/v1/sys/health", timeout=5)
-        if response.status_code in [200, 429, 472, 473]:  # Vault health status codes
-            return {"status": "healthy"}
-        return {"status": "unhealthy", "message": f"Status code: {response.status_code}"}
-    except Exception as e:
-        logger.error("vault_health_check_failed", error=str(e))
-        return {"status": "unhealthy", "message": str(e)}
+            logger.info("health_service_initialized")
+        except Exception as e:
+            logger.error("health_service_initialization_failed", error=str(e), exc_info=True)
+            # Return service without repos - will return degraded status
+            _health_service = HealthCheckService(settings=settings)
+
+    return _health_service
 
 
 @router.get("/health")
-async def health_check():
+async def health_check(
+    health_service: HealthCheckService = Depends(get_health_service)
+):
     """
     Health check endpoint.
 
     Returns 200 if all components are healthy, 503 if any component is unhealthy.
+
+    Response format:
+    {
+        "status": "healthy" | "unhealthy" | "degraded",
+        "check_time": "2025-11-25T08:00:00Z",
+        "components": {
+            "cassandra": {"service": "cassandra", "status": "healthy", "details": {...}},
+            "postgresql": {"service": "postgresql", "status": "healthy", "details": {...}},
+            ...
+        }
+    }
     """
     logger.info("health_check_requested")
 
-    components = {
-        "cassandra": await check_cassandra(),
-        "postgresql": await check_postgresql(),
-        "kafka": await check_kafka(),
-        "schema_registry": await check_schema_registry(),
-        "vault": await check_vault(),
-    }
-
-    # Determine overall status
-    all_healthy = all(c["status"] == "healthy" for c in components.values())
-    overall_status = "healthy" if all_healthy else "unhealthy"
+    # Perform health check
+    health_result = health_service.check_all()
 
     response_data = {
-        "status": overall_status,
+        "status": health_result["status"],
         "check_time": datetime.utcnow().isoformat() + "Z",
-        "components": components,
+        "components": health_result["components"],
     }
 
-    status_code = status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+    # Map health status to HTTP status code
+    if health_result["status"] == HealthStatus.HEALTHY:
+        status_code = status.HTTP_200_OK
+    elif health_result["status"] == HealthStatus.DEGRADED:
+        status_code = status.HTTP_200_OK  # Still operational but degraded
+    else:  # UNHEALTHY
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     logger.info(
         "health_check_completed",
-        overall_status=overall_status,
+        overall_status=health_result["status"],
+        status_code=status_code,
+    )
+
+    return JSONResponse(status_code=status_code, content=response_data)
+
+
+@router.get("/health/{component}")
+async def health_check_component(
+    component: str,
+    health_service: HealthCheckService = Depends(get_health_service)
+):
+    """
+    Check health of a specific component.
+
+    Args:
+        component: Component name (cassandra, postgresql, kafka, schema_registry, vault)
+
+    Returns 200 if component is healthy, 503 if unhealthy.
+    """
+    logger.info("component_health_check_requested", component=component)
+
+    # Map component name to health check method
+    check_methods = {
+        "cassandra": health_service.check_cassandra,
+        "postgresql": health_service.check_postgresql,
+        "kafka": health_service.check_kafka,
+        "schema_registry": health_service.check_schema_registry,
+        "vault": health_service.check_vault,
+    }
+
+    if component not in check_methods:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "status": "error",
+                "message": f"Unknown component: {component}",
+                "available_components": list(check_methods.keys())
+            }
+        )
+
+    # Perform component-specific health check
+    result = check_methods[component]()
+
+    status_code = (
+        status.HTTP_200_OK
+        if result["status"] == HealthStatus.HEALTHY
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+    response_data = {
+        **result,
+        "check_time": datetime.utcnow().isoformat() + "Z",
+    }
+
+    logger.info(
+        "component_health_check_completed",
+        component=component,
+        component_status=result["status"],
         status_code=status_code,
     )
 

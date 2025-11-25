@@ -112,7 +112,32 @@ metrics: ## Open Prometheus metrics
 	@echo "Grafana: http://localhost:3000 (admin/admin)"
 	@echo "Jaeger: http://localhost:16686"
 
-benchmark: ## Run performance benchmarks
-	poetry run python scripts/benchmark.py
+benchmark: ## Run performance benchmarks with Locust
+	poetry run locust -f scripts/benchmark.py --headless --users 100 --spawn-rate 10 --run-time 5m --html benchmark-report.html
+
+benchmark-interactive: ## Run performance benchmarks with Locust UI
+	poetry run locust -f scripts/benchmark.py
+
+helm-lint: ## Lint Helm charts
+	helm lint helm/
+
+helm-template: ## Render Helm templates
+	helm template cdc-pipeline helm/ > /tmp/helm-rendered.yaml
+	@echo "Rendered templates written to /tmp/helm-rendered.yaml"
+
+helm-validate: ## Validate Helm chart
+	$(MAKE) helm-lint
+	$(MAKE) helm-template
+
+security-scan: ## Run comprehensive security scans
+	$(MAKE) security
+	@echo "\nScanning for secrets..."
+	poetry run detect-secrets scan
+
+type-check: ## Run mypy type checking
+	poetry run mypy src --strict --show-error-codes
+
+pre-commit: ## Run pre-commit hooks manually
+	poetry run pre-commit run --all-files
 
 all: clean install install-hooks lint test ## Run all checks and tests

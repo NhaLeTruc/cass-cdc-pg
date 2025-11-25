@@ -35,6 +35,9 @@ uvicorn = {extras = ["standard"], version = "^0.27.0"}
 apscheduler = "^3.10.4"
 # Testing data generation
 faker = "^22.0.0"
+# HTTP client for health checks and alerts
+httpx = "^0.26.0"
+slowapi = "^0.1.9"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -51,6 +54,10 @@ bandit = "^1.7.6"
 safety = "^2.3.5"
 # Pre-commit hooks
 pre-commit = "^3.6.0"
+# Performance benchmarking
+locust = "^2.20.0"
+# Property-based testing
+hypothesis = "^6.92.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.3"

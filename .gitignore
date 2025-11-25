@@ -70,9 +70,6 @@ logs/
 *.sqlite
 *.sqlite3
 
-# Docker
-.dockerignore
-
 # Temporary files
 *.tmp
 *.temp

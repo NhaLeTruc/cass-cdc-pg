@@ -11,14 +11,14 @@ class AbstractRepository(ABC):
     @abstractmethod
     def connect(self) -> None:
         """Establish connection to the data store"""
-        pass
+        raise NotImplementedError("Subclass must implement connect()")
 
     @abstractmethod
     def health_check(self) -> bool:
         """Check if the connection is healthy"""
-        pass
+        raise NotImplementedError("Subclass must implement health_check()")
 
     @abstractmethod
     def close(self) -> None:
         """Close the connection"""
-        pass
+        raise NotImplementedError("Subclass must implement close()")
