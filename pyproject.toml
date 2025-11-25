@@ -14,6 +14,7 @@ confluent-kafka = "^2.3.0"
 # Database drivers
 cassandra-driver = "^3.29.0"
 psycopg2-binary = "^2.9.9"
+sqlalchemy = "^2.0.0"
 # Data validation and configuration
 pydantic = "^2.5.3"
 pydantic-settings = "^2.1.0"

@@ -25,12 +25,12 @@ from src.repositories.cassandra_repository import CassandraRepository
 from src.repositories.postgresql_repository import PostgreSQLRepository
 from src.repositories.reconciliation_repository import ReconciliationRepository
 from src.monitoring.metrics import (
-    reconciliation_drift_percentage,
-    reconciliation_cassandra_rows,
-    reconciliation_postgres_rows,
-    reconciliation_mismatches_total,
-    reconciliation_jobs_completed_total,
-    reconciliation_duration_seconds
+    cdc_reconciliation_drift_percentage,
+    cdc_reconciliation_cassandra_rows,
+    cdc_reconciliation_postgres_rows,
+    cdc_reconciliation_mismatches_total,
+    cdc_reconciliation_jobs_completed_total,
+    cdc_reconciliation_duration_seconds
 )
 
 
@@ -121,26 +121,26 @@ class ReconciliationEngine:
             job.status = JobStatus.COMPLETED
 
             # Update metrics
-            reconciliation_drift_percentage.labels(table=table_name).set(
+            cdc_reconciliation_drift_percentage.labels(table=table_name).set(
                 float(drift_percentage)
             )
-            reconciliation_cassandra_rows.labels(table=table_name).set(cassandra_count)
-            reconciliation_postgres_rows.labels(table=table_name).set(postgres_count)
-            reconciliation_mismatches_total.labels(
+            cdc_reconciliation_cassandra_rows.labels(table=table_name).set(cassandra_count)
+            cdc_reconciliation_postgres_rows.labels(table=table_name).set(postgres_count)
+            cdc_cdc_reconciliation_mismatches_total.labels(
                 table=table_name,
                 type="ROW_COUNT_DIFF"
             ).inc(mismatch_count)
 
             # Record duration
             duration = (job.completed_at - job.started_at).total_seconds()
-            reconciliation_duration_seconds.labels(table=table_name).observe(duration)
+            cdc_cdc_reconciliation_duration_seconds.labels(table=table_name).observe(duration)
 
             # Persist job if repository available
             if self.reconciliation_repo:
                 job = self.reconciliation_repo.create_job(job)
 
             # Increment completed jobs counter
-            reconciliation_jobs_completed_total.labels(
+            cdc_cdc_reconciliation_jobs_completed_total.labels(
                 table=table_name,
                 status="COMPLETED"
             ).inc()
@@ -158,7 +158,7 @@ class ReconciliationEngine:
             if self.reconciliation_repo:
                 self.reconciliation_repo.create_job(job)
 
-            reconciliation_jobs_completed_total.labels(
+            cdc_reconciliation_jobs_completed_total.labels(
                 table=table_name,
                 status="FAILED"
             ).inc()
@@ -274,19 +274,19 @@ class ReconciliationEngine:
 
             # Update metrics
             for mismatch in mismatches:
-                reconciliation_mismatches_total.labels(
+                cdc_reconciliation_mismatches_total.labels(
                     table=table_name,
                     type=mismatch.mismatch_type.value
                 ).inc()
 
             # Record duration
             duration = (job.completed_at - job.started_at).total_seconds()
-            reconciliation_duration_seconds.labels(table=table_name).observe(duration)
+            cdc_reconciliation_duration_seconds.labels(table=table_name).observe(duration)
 
             if self.reconciliation_repo:
                 self.reconciliation_repo.create_job(job)
 
-            reconciliation_jobs_completed_total.labels(
+            cdc_reconciliation_jobs_completed_total.labels(
                 table=table_name,
                 status="COMPLETED"
             ).inc()
@@ -304,7 +304,7 @@ class ReconciliationEngine:
             if self.reconciliation_repo:
                 self.reconciliation_repo.create_job(job)
 
-            reconciliation_jobs_completed_total.labels(
+            cdc_reconciliation_jobs_completed_total.labels(
                 table=table_name,
                 status="FAILED"
             ).inc()

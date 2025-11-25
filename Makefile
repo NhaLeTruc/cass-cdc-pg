@@ -1,5 +1,8 @@
 .PHONY: help install test lint clean start stop health generate-data
 
+# Ensure poetry is in PATH
+export PATH := $(HOME)/.local/bin:$(PATH)
+
 # Default target
 .DEFAULT_GOAL := help
 
