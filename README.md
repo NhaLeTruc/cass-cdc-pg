@@ -185,6 +185,61 @@ Pre-configured Grafana dashboards:
 Distributed tracing via Jaeger shows end-to-end request flows:
 - Cassandra capture → Kafka produce → PostgreSQL write
 
+## Data Reconciliation
+
+Automated data consistency validation between Cassandra and PostgreSQL:
+
+### Hourly Reconciliation
+
+Automatic reconciliation runs every hour for configured tables:
+
+```bash
+# Configure in .env
+RECONCILIATION_ENABLED=true
+RECONCILIATION_TABLES=users,orders
+RECONCILIATION_INTERVAL_MINUTES=60
+```
+
+### Manual Reconciliation
+
+Trigger on-demand reconciliation via API:
+
+```bash
+curl -X POST http://localhost:8080/reconciliation/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"tables": ["users"], "validation_strategy": "ROW_COUNT"}'
+```
+
+### Drift Detection
+
+Reconciliation alerts fire automatically:
+- **Warning**: Drift >1% (ReconciliationDriftWarning)
+- **Critical**: Drift >5% (ReconciliationDriftCritical)
+
+View drift metrics in Grafana reconciliation dashboard.
+
+### Validation Strategies
+
+- **ROW_COUNT**: Fast drift detection via COUNT(*) comparison
+- **CHECKSUM**: SHA-256 hash comparison of record contents
+- **TIMESTAMP_RANGE**: Validates recent changes within time window
+- **SAMPLE**: Statistical validation with configurable sample size
+
+### Query Reconciliation Results
+
+```bash
+# List reconciliation jobs
+curl http://localhost:8080/reconciliation/jobs?limit=10
+
+# Get job details with mismatches
+curl http://localhost:8080/reconciliation/jobs/{job_id}
+
+# Query mismatches
+curl http://localhost:8080/reconciliation/mismatches?table=users&resolution_status=PENDING
+```
+
+See [reconciliation.md](docs/reconciliation.md) for complete guide.
+
 ## Troubleshooting
 
 ### Common Issues

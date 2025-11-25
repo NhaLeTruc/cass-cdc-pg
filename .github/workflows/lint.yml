@@ -1,0 +1,45 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-ansi
+
+      - name: Run Ruff (linter)
+        run: |
+          poetry run ruff check . --output-format=github
+
+      - name: Run Black (formatter check)
+        run: |
+          poetry run black --check .
+
+      - name: Run mypy (type checker)
+        run: |
+          poetry run mypy src tests --strict
+
+      - name: Check code complexity (McCabe)
+        run: |
+          poetry run ruff check . --select=C90 --config="[tool.ruff.mccabe]\nmax-complexity=10"

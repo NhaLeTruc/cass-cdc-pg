@@ -1,0 +1,94 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.11']
+
+    services:
+      postgres:
+        image: postgres:16.1
+        env:
+          POSTGRES_DB: warehouse
+          POSTGRES_USER: cdc_user
+          POSTGRES_PASSWORD: cdc_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      cassandra:
+        image: cassandra:4.1.3
+        ports:
+          - 9042:9042
+        env:
+          MAX_HEAP_SIZE: 512M
+          HEAP_NEWSIZE: 128M
+        options: >-
+          --health-cmd "cqlsh -e 'DESCRIBE KEYSPACES'"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-ansi
+
+      - name: Run unit tests
+        run: |
+          poetry run pytest tests/unit -v --cov=src --cov-report=xml --cov-report=term
+        env:
+          CASSANDRA_HOST: localhost
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: cdc_user
+          POSTGRES_PASSWORD: cdc_password
+
+      - name: Run integration tests
+        run: |
+          poetry run pytest tests/integration -v --cov=src --cov-append --cov-report=xml
+        env:
+          CASSANDRA_HOST: localhost
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: cdc_user
+          POSTGRES_PASSWORD: cdc_password
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+
+      - name: Check coverage threshold
+        run: |
+          poetry run pytest --cov=src --cov-fail-under=80
+        env:
+          CASSANDRA_HOST: localhost
+          POSTGRES_HOST: localhost

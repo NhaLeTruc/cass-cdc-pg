@@ -335,16 +335,16 @@ All paths relative to repository root:
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T098 [P] Create architecture diagrams (docs/architecture.png showing Cassandra→Debezium→Kafka→JDBC Sink→PostgreSQL flow with supporting services)
-- [ ] T099 [P] Create runbooks for common issues (docs/runbooks/high-consumer-lag.md, docs/runbooks/connector-failure.md, docs/runbooks/schema-mismatch.md, docs/runbooks/vault-sealed.md)
-- [ ] T100 [P] Update README.md with complete documentation (prerequisites, quick start, architecture, monitoring, troubleshooting, deployment)
-- [ ] T101 [P] Create CI/CD workflows (.github/workflows/test.yml for pytest on PR, .github/workflows/lint.yml for ruff/mypy/black, .github/workflows/security.yml for bandit/safety)
-- [ ] T102 [P] Create Kubernetes Helm charts (helm/Chart.yaml, helm/values.yaml, helm/templates/deployment.yaml for Kafka Connect, configmap.yaml for connector configs, secret.yaml for Vault token)
-- [ ] T103 [P] Add performance benchmarking script (scripts/benchmark.py using Locust to simulate 10K events/sec load, measure P50/P95/P99 latency)
-- [ ] T104 [P] Create deployment checklist (docs/deployment-checklist.md for production readiness: TLS certificates, Vault policies, resource limits, monitoring alerts, backup strategy)
-- [ ] T105 Run full E2E test suite and validate all acceptance criteria (execute tests/integration/test_end_to_end.py covering all 6 user stories, verify all success criteria from spec.md)
-- [ ] T106 Verify quickstart.md instructions work on clean machine (spin up fresh VM, follow quickstart.md step-by-step, verify 5-minute setup succeeds)
-- [ ] T107 Code cleanup and refactoring (remove DRY violations, extract common patterns, simplify complex functions >50 lines, ensure McCabe complexity ≤10)
+- [X] T098 [P] Create architecture diagrams (docs/architecture.png showing Cassandra→Debezium→Kafka→JDBC Sink→PostgreSQL flow with supporting services)
+- [X] T099 [P] Create runbooks for common issues (docs/runbooks/high-consumer-lag.md, docs/runbooks/connector-failure.md, docs/runbooks/schema-mismatch.md, docs/runbooks/vault-sealed.md)
+- [X] T100 [P] Update README.md with complete documentation (prerequisites, quick start, architecture, monitoring, troubleshooting, deployment)
+- [X] T101 [P] Create CI/CD workflows (.github/workflows/test.yml for pytest on PR, .github/workflows/lint.yml for ruff/mypy/black, .github/workflows/security.yml for bandit/safety)
+- [X] T102 [P] Create Kubernetes Helm charts (helm/Chart.yaml, helm/values.yaml, helm/templates/deployment.yaml for Kafka Connect, configmap.yaml for connector configs, secret.yaml for Vault token)
+- [X] T103 [P] Add performance benchmarking script (scripts/benchmark.py using Locust to simulate 10K events/sec load, measure P50/P95/P99 latency)
+- [X] T104 [P] Create deployment checklist (docs/deployment-checklist.md for production readiness: TLS certificates, Vault policies, resource limits, monitoring alerts, backup strategy)
+- [X] T105 Run full E2E test suite and validate all acceptance criteria (execute tests/integration/test_end_to_end.py covering all 6 user stories, verify all success criteria from spec.md)
+- [X] T106 Verify quickstart.md instructions work on clean machine (spin up fresh VM, follow quickstart.md step-by-step, verify 5-minute setup succeeds)
+- [X] T107 Code cleanup and refactoring (remove DRY violations, extract common patterns, simplify complex functions >50 lines, ensure McCabe complexity ≤10)
 
 ---
 
