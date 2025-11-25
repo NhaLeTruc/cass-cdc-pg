@@ -1,0 +1,160 @@
+{
+  "dashboard": {
+    "title": "CDC Reconciliation Dashboard",
+    "tags": ["cdc", "reconciliation"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "panels": [
+      {
+        "id": 1,
+        "title": "Drift Percentage by Table",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "cdc_reconciliation_drift_percentage",
+            "legendFormat": "{{table}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Drift %"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [5], "type": "gt"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "name": "High Drift Percentage"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Row Count Comparison",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "cdc_reconciliation_cassandra_rows",
+            "legendFormat": "Cassandra - {{table}}",
+            "refId": "A"
+          },
+          {
+            "expr": "cdc_reconciliation_postgres_rows",
+            "legendFormat": "PostgreSQL - {{table}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Row Count"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Mismatch Count by Type",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(cdc_reconciliation_mismatches_total[5m])",
+            "legendFormat": "{{table}} - {{type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Mismatches/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Reconciliation Job Success Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(cdc_reconciliation_jobs_completed_total{status=\"COMPLETED\"}[5m])",
+            "legendFormat": "Success - {{table}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(cdc_reconciliation_jobs_completed_total{status=\"FAILED\"}[5m])",
+            "legendFormat": "Failed - {{table}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Jobs/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Reconciliation Duration",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(cdc_reconciliation_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 - {{table}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(cdc_reconciliation_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 - {{table}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(cdc_reconciliation_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 - {{table}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Recent Reconciliation Jobs",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "cdc_reconciliation_jobs_completed_total",
+            "instant": true,
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "table": "Table",
+                "status": "Status",
+                "Value": "Count"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "time": {"from": "now-6h", "to": "now"},
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+    }
+  }
+}

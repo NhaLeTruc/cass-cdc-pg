@@ -224,6 +224,37 @@ services:
         limits:
           memory: 256m
 
+  # Prometheus Pushgateway (T128)
+  pushgateway:
+    image: prom/pushgateway:v1.6.2
+    container_name: cdc-pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - cdc-network
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # AlertManager (T129)
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: cdc-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./docker/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - cdc-network
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
   # Jaeger
   jaeger:
     image: jaegertracing/all-in-one:1.53.0

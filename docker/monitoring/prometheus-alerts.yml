@@ -55,6 +55,15 @@ groups:
           summary: "DLQ events accumulating"
           description: "DLQ receiving {{ $value }} events/second for table {{ $labels.table }}"
 
+      - alert: ReconciliationJobFailed
+        expr: increase(cdc_reconciliation_jobs_completed_total{status="FAILED"}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Multiple reconciliation jobs failing"
+          description: "{{ $value }} reconciliation jobs failed in the last hour for table {{ $labels.table }}"
+
       - alert: KafkaConnectTaskFailure
         expr: kafka_connect_connector_state == 0
         for: 2m
