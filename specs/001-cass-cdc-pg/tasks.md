@@ -134,7 +134,7 @@ All paths relative to repository root:
 
 **Goal**: Enable developers to run entire CDC pipeline on laptop with single command
 
-**Independent Test**: Run `docker-compose up`, insert test data, verify replication works locally under 4GB RAM
+**Independent Test**: Run `docker compose up`, insert test data, verify replication works locally under 4GB RAM
 
 ### Tests for User Story 2 (TDD - MUST COMPLETE FIRST) ⚠️
 

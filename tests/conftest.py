@@ -7,7 +7,7 @@ from typing import Generator
 
 @pytest.fixture(scope="session")
 def docker_compose_file() -> str:
-    """Path to docker-compose file for testcontainers"""
+    """Path to docker compose file for testcontainers"""
     return "docker-compose.yml"
 
 

@@ -34,7 +34,7 @@ class TestHealthAPI:
         """Verify /health returns 503 if any component is unhealthy."""
         # Note: This test requires simulating component failure
         # For actual implementation, you would:
-        # 1. Stop a service (e.g., docker-compose stop cassandra)
+        # 1. Stop a service (e.g., docker compose stop cassandra)
         # 2. Call /health
         # 3. Verify 503 response
         # 4. Restart service

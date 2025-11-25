@@ -82,10 +82,10 @@ docker exec -it cdc-postgres psql -U admin -d warehouse -c "SELECT 1"
 **Solution**:
 ```bash
 # If Cassandra is down
-docker-compose restart cassandra
+docker compose restart cassandra
 
 # If PostgreSQL is down
-docker-compose restart postgres
+docker compose restart postgres
 
 # Wait for databases to be healthy (30-60 seconds)
 # Then restart failed connector
@@ -120,7 +120,7 @@ docker exec -it cdc-vault vault login root
 docker exec -it cdc-vault vault lease renew database/creds/postgresql-writer/<lease_id>
 
 # Or restart CDC API to fetch fresh credentials
-docker-compose restart cdc-api
+docker compose restart cdc-api
 
 # Update connector configuration with new credentials
 curl -X PUT http://localhost:8083/connectors/postgres-sink-connector/config \
@@ -146,7 +146,7 @@ curl http://localhost:8081/subjects
 **Solution**:
 ```bash
 # Restart Schema Registry
-docker-compose restart schema-registry
+docker compose restart schema-registry
 
 # Wait for Schema Registry to be ready (10-15 seconds)
 sleep 15
@@ -245,7 +245,7 @@ docker logs cdc-kafka-connect --tail=100
 **Solution**:
 ```bash
 # Restart Kafka Connect
-docker-compose restart kafka-connect
+docker compose restart kafka-connect
 
 # Wait for Kafka Connect to be ready (30 seconds)
 sleep 30

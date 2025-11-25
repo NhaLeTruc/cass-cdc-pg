@@ -31,7 +31,7 @@ As a developer, I need to run the entire CDC pipeline on my laptop using Docker 
 
 **Why this priority**: Enables rapid development iteration and testing. Critical for developer productivity and reducing dependency on shared environments.
 
-**Independent Test**: Can be fully tested by running a single command (e.g., `docker-compose up`) that starts Cassandra, PostgreSQL, and the CDC pipeline, then verifying data replication works end-to-end locally.
+**Independent Test**: Can be fully tested by running a single command (e.g., `docker compose up`) that starts Cassandra, PostgreSQL, and the CDC pipeline, then verifying data replication works end-to-end locally.
 
 **Acceptance Scenarios**:
 

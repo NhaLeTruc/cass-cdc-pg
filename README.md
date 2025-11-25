@@ -256,7 +256,7 @@ make logs
 **Replication lag**
 ```bash
 # Check consumer lag
-docker-compose exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group connect-cdc-sink
+docker compose exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group connect-cdc-sink
 ```
 
 **Schema mismatch errors**

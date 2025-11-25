@@ -86,7 +86,7 @@ class TestResourceLimits:
                 memory_limit_mb = memory_limit_bytes / (1024 * 1024)
 
                 assert memory_limit_mb <= expected_limit_mb * 1.1, (
-                    f"Service {service_name} docker-compose limit "
+                    f"Service {service_name} docker compose limit "
                     f"{memory_limit_mb:.0f}MB exceeds expected {expected_limit_mb}MB"
                 )
 

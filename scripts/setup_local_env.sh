@@ -21,7 +21,7 @@ check_prerequisites() {
         missing_tools+=("docker")
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker compose &> /dev/null; then
         missing_tools+=("docker-compose")
     fi
 
@@ -59,7 +59,7 @@ check_prerequisites() {
     echo "  ✓ Docker ${docker_version}"
 
     local compose_version
-    compose_version=$(docker-compose version --short 2>/dev/null)
+    compose_version=$(docker compose version --short 2>/dev/null)
     echo "  ✓ Docker Compose ${compose_version}"
 
     local python_version
@@ -89,9 +89,9 @@ setup_env_file() {
 cleanup_existing_environment() {
     echo "Cleaning up any existing environment..."
 
-    if docker-compose ps -q 2>/dev/null | grep -q .; then
+    if docker compose ps -q 2>/dev/null | grep -q .; then
         echo "  Stopping existing services..."
-        docker-compose down --volumes --remove-orphans
+        docker compose down --volumes --remove-orphans
         echo "  ✓ Stopped and removed existing containers"
     else
         echo "  ✓ No existing services to clean up"
@@ -105,7 +105,7 @@ start_services() {
     echo "This may take several minutes on first run (downloading images)..."
     echo ""
 
-    docker-compose up -d
+    docker compose up -d
 
     echo ""
     echo "  ✓ Services started"
@@ -249,10 +249,10 @@ print_service_info() {
     echo "  • Jaeger:          http://localhost:16686"
     echo ""
     echo "Next steps:"
-    echo "  • View logs:       docker-compose logs -f"
+    echo "  • View logs:       docker compose logs -f"
     echo "  • Check connectors: curl http://localhost:8083/connectors"
     echo "  • Run tests:       pytest tests/integration/"
-    echo "  • Stop services:   docker-compose down"
+    echo "  • Stop services:   docker compose down"
     echo ""
     echo "Documentation:"
     echo "  • See quickstart.md for detailed usage"

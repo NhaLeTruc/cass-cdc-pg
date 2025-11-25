@@ -31,13 +31,13 @@ RECONCILIATION_INTERVAL_MINUTES=60
 
 ```bash
 # Start monitoring stack with AlertManager
-docker-compose up -d prometheus alertmanager pushgateway grafana
+docker compose up -d prometheus alertmanager pushgateway grafana
 
 # Start CDC API with reconciliation scheduler
-docker-compose up -d cdc-api
+docker compose up -d cdc-api
 
 # Verify services are running
-docker-compose ps
+docker compose ps
 ```
 
 Expected output:
@@ -182,7 +182,7 @@ curl http://localhost:9093/api/v2/alerts | jq '.[] | select(.labels.alertname=="
 
 **Check logs**:
 ```bash
-docker-compose logs cdc-api | grep reconciliation
+docker compose logs cdc-api | grep reconciliation
 ```
 
 **Common fixes**:
@@ -200,7 +200,7 @@ curl http://localhost:9091/metrics | grep cdc_reconciliation
 **Common fixes**:
 - Verify Prometheus is scraping pushgateway: http://localhost:9090/targets
 - Check `prometheus.yml` includes pushgateway scrape config
-- Restart Prometheus: `docker-compose restart prometheus`
+- Restart Prometheus: `docker compose restart prometheus`
 
 ### Alerts Not Firing
 
@@ -211,7 +211,7 @@ curl http://localhost:9090/api/v1/rules | jq '.data.groups[] | select(.name=="cd
 
 **Common fixes**:
 - Verify `prometheus-alerts.yml` is mounted in Prometheus container
-- Check AlertManager is running: `docker-compose ps alertmanager`
+- Check AlertManager is running: `docker compose ps alertmanager`
 - Verify Prometheus alertmanager config: http://localhost:9090/config
 
 ## Next Steps

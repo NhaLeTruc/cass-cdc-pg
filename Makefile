@@ -56,30 +56,30 @@ clean: ## Clean build artifacts and caches
 	find . -type f -name '*.pyc' -delete
 
 start: ## Start all services with Docker Compose
-	docker-compose up -d
+	docker compose up -d
 	@echo "Waiting for services to be healthy..."
 	@sleep 10
 	@$(MAKE) health
 
 stop: ## Stop all services
-	docker-compose down
+	docker compose down
 
 restart: ## Restart all services
-	docker-compose restart
+	docker compose restart
 
 logs: ## Follow Docker Compose logs
-	docker-compose logs -f
+	docker compose logs -f
 
 logs-app: ## Follow application logs only
-	docker-compose logs -f api
+	docker compose logs -f api
 
 health: ## Check health of all services
 	@echo "Checking service health..."
-	@docker-compose ps
+	@docker compose ps
 	@echo "\nCassandra:"
-	@docker-compose exec -T cassandra nodetool status || echo "Cassandra not ready"
+	@docker compose exec -T cassandra nodetool status || echo "Cassandra not ready"
 	@echo "\nPostgreSQL:"
-	@docker-compose exec -T postgres pg_isready || echo "PostgreSQL not ready"
+	@docker compose exec -T postgres pg_isready || echo "PostgreSQL not ready"
 	@echo "\nKafka Connect:"
 	@curl -s http://localhost:8083/connectors || echo "Kafka Connect not ready"
 
@@ -93,19 +93,19 @@ setup-local: ## One-command local environment setup
 	bash scripts/setup_local_env.sh
 
 build: ## Build Docker images
-	docker-compose build
+	docker compose build
 
 ps: ## Show running containers
-	docker-compose ps
+	docker compose ps
 
 shell-cassandra: ## Open Cassandra CQL shell
-	docker-compose exec cassandra cqlsh
+	docker compose exec cassandra cqlsh
 
 shell-postgres: ## Open PostgreSQL shell
-	docker-compose exec postgres psql -U cdc_user -d warehouse
+	docker compose exec postgres psql -U cdc_user -d warehouse
 
 shell-kafka: ## Open Kafka console
-	docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic cdc-events-users --from-beginning
+	docker compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic cdc-events-users --from-beginning
 
 metrics: ## Open Prometheus metrics
 	@echo "Prometheus: http://localhost:9090"

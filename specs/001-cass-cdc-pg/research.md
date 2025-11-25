@@ -739,13 +739,13 @@ networks:
 
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Check health
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f kafka-connect
+docker compose logs -f kafka-connect
 
 # Verify Cassandra CDC enabled
 docker exec -it cdc-cassandra cqlsh -e "DESCRIBE TABLE warehouse.users"

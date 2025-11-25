@@ -95,7 +95,7 @@ docker exec -it cdc-postgres psql -U admin -d warehouse -c "ALTER SYSTEM SET max
 docker restart cdc-postgres
 
 # Or increase Kafka Connect worker count to distribute load
-docker-compose up -d --scale kafka-connect=3
+docker compose up -d --scale kafka-connect=3
 ```
 
 ### Cause 3: Slow PostgreSQL Writes (Lock Contention)
@@ -171,7 +171,7 @@ curl -X PUT http://localhost:8083/connectors/postgres-sink-connector/config \
 # environment:
 #   KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G"  # Increase from 1G to 2G
 
-docker-compose up -d kafka-connect
+docker compose up -d kafka-connect
 ```
 
 ## Escalation
@@ -185,7 +185,7 @@ If lag does not reduce after 30 minutes:
 
 2. **Scale up JDBC Sink workers**:
    ```bash
-   docker-compose up -d --scale kafka-connect=5
+   docker compose up -d --scale kafka-connect=5
    ```
 
 3. **Contact DBA** to check PostgreSQL query performance and table bloat

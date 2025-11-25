@@ -133,7 +133,7 @@ docker exec -it cdc-vault vault status
 docker volume inspect cdc_vault-data
 
 # If volume corrupted, restore from backup
-docker-compose down vault
+docker compose down vault
 docker volume rm cdc_vault-data
 docker volume create cdc_vault-data
 
@@ -144,7 +144,7 @@ docker run --rm \
   hashicorp/vault:1.15.4 operator raft snapshot restore /backup/vault-snapshot-latest.snap
 
 # Restart Vault
-docker-compose up -d vault
+docker compose up -d vault
 
 # Unseal Vault
 docker exec -it cdc-vault vault operator unseal <key-1>
@@ -167,7 +167,7 @@ docker exec -it cdc-vault vault operator unseal <key-3>
 # POSTGRES_PASSWORD=cdc_password
 
 # Restart services
-docker-compose restart cdc-api kafka-connect
+docker compose restart cdc-api kafka-connect
 
 # Re-enable Vault after unsealing
 # Remove direct credentials from environment
@@ -215,7 +215,7 @@ docker exec -it cdc-vault vault login <root-token>
 docker exec -it cdc-vault vault kv get secret/cdc/cassandra
 
 # 3. Restart CDC services to reconnect
-docker-compose restart cdc-api
+docker compose restart cdc-api
 
 # 4. Verify connector status
 curl http://localhost:8083/connectors/cassandra-source-connector/status

@@ -239,7 +239,7 @@ class TestDockerComposeHealth:
         return result.returncode == 0
 
     def _run_docker_compose_command(self, args: List[str]) -> subprocess.CompletedProcess:
-        """Run a docker-compose command."""
+        """Run a docker compose command."""
         return subprocess.run(
             ["docker-compose"] + args,
             capture_output=True,

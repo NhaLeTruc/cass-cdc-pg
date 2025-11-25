@@ -325,7 +325,7 @@ class TestCheckpointResume:
         )
 
     def _run_docker_compose(self, args: List[str]) -> None:
-        """Run docker-compose command."""
+        """Run docker compose command."""
         subprocess.run(
             ["docker-compose"] + args,
             cwd="/home/bob/WORK/cass-cdc-pg",

@@ -31,7 +31,7 @@ docker --version
 # Expected: Docker version 24.0.0 or higher
 
 # Check Docker Compose version
-docker-compose --version
+docker compose --version
 # Expected: Docker Compose version 2.23.0 or higher
 
 # Check Docker is running
@@ -102,7 +102,7 @@ If you prefer manual control, follow these steps:
 
 ```bash
 # Start entire CDC pipeline stack
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to become healthy (~60-90 seconds)
 bash scripts/health-check-cassandra.sh
@@ -128,7 +128,7 @@ python3 scripts/generate_test_data.py --users 10000 --orders 10000 --sessions 10
 
 ```bash
 # Check all containers are running
-docker-compose ps
+docker compose ps
 
 # Expected output:
 # NAME                   STATUS              PORTS
@@ -549,7 +549,7 @@ open http://localhost:9090/graph
 
 ### Services Won't Start
 
-**Problem**: `docker-compose up` fails or containers exit immediately
+**Problem**: `docker compose up` fails or containers exit immediately
 
 **Solutions**:
 
@@ -568,8 +568,8 @@ lsof -i :9092  # Kafka
 # Kill conflicting processes or change ports in .env
 
 # Check logs for specific service
-docker-compose logs cassandra
-docker-compose logs postgres
+docker compose logs cassandra
+docker compose logs postgres
 ```
 
 ### Cassandra CDC Not Working
@@ -588,7 +588,7 @@ docker exec -it cdc-cassandra ls -la /var/lib/cassandra/cdc_raw/
 # Should show .log files after inserts
 
 # Check Debezium connector logs
-docker-compose logs kafka-connect | grep -i cassandra
+docker compose logs kafka-connect | grep -i cassandra
 
 # Restart connector
 curl -X POST http://localhost:8083/connectors/cassandra-source-connector/restart
@@ -610,7 +610,7 @@ docker exec -it cdc-kafka kafka-consumer-groups \
 curl http://localhost:8083/connectors/postgresql-sink-connector/status | jq
 
 # If connector failed, check error:
-docker-compose logs kafka-connect | grep -i error
+docker compose logs kafka-connect | grep -i error
 
 # Check PostgreSQL connection
 docker exec -it cdc-postgres pg_isready
@@ -677,7 +677,7 @@ docker stats --no-stream
 # KAFKA_HEAP_OPTS=-Xmx512M -Xms512M
 
 # Restart services after changes
-docker-compose restart
+docker compose restart
 ```
 
 ---
@@ -785,7 +785,7 @@ docker exec -it cdc-kafka kafka-avro-console-consumer \
 
 ```bash
 # Stop PostgreSQL to test retry logic
-docker-compose stop postgres
+docker compose stop postgres
 
 # Insert data in Cassandra (will fail to replicate)
 docker exec -it cdc-cassandra cqlsh -e "
@@ -794,10 +794,10 @@ docker exec -it cdc-cassandra cqlsh -e "
 "
 
 # Check errors in connector logs
-docker-compose logs kafka-connect | tail -50
+docker compose logs kafka-connect | tail -50
 
 # Restart PostgreSQL
-docker-compose start postgres
+docker compose start postgres
 
 # Wait for auto-retry and verify replication
 sleep 30
@@ -812,7 +812,7 @@ docker exec -it cdc-postgres psql -U admin -d warehouse -c "SELECT * FROM cdc_us
 
 ```bash
 # Stop all containers but keep volumes
-docker-compose down
+docker compose down
 
 # Or with Makefile:
 make stop
@@ -822,7 +822,7 @@ make stop
 
 ```bash
 # Remove containers, networks, and volumes
-docker-compose down -v
+docker compose down -v
 
 # Or with Makefile:
 make clean
@@ -860,7 +860,7 @@ After completing this quickstart:
 ## Getting Help
 
 - **Documentation**: `/home/bob/WORK/cass-cdc-pg/specs/001-cass-cdc-pg/`
-- **Logs**: `docker-compose logs <service-name>`
+- **Logs**: `docker compose logs <service-name>`
 - **Health Checks**: `make health` or `curl http://localhost:8080/api/v1/health`
 - **Metrics**: http://localhost:3000 (Grafana)
 - **Traces**: http://localhost:16686 (Jaeger)
