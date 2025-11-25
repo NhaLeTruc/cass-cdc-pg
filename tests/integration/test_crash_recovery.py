@@ -7,13 +7,14 @@ import psycopg2
 from cassandra.cluster import Cluster
 import structlog
 
+from .conftest import requires_cdc_pipeline
 logger = structlog.get_logger(__name__)
 
 
 @pytest.fixture(scope="module")
 def cassandra_session():
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
     session = cluster.connect("cdc_test")
     yield session
     cluster.shutdown()
@@ -36,6 +37,7 @@ def postgres_conn():
 class TestCrashRecovery:
     """Test crash recovery from checkpoint."""
 
+    @requires_cdc_pipeline
     def test_crash_recovery_from_checkpoint_no_duplicates(
         self, cassandra_session, postgres_conn
     ):
@@ -178,6 +180,7 @@ class TestCrashRecovery:
 
         logger.info("test_crash_recovery_success", total_records=total_records)
 
+    @requires_cdc_pipeline
     def test_checkpoint_offset_preservation(self, cassandra_session, postgres_conn):
         """
         Test that Kafka Connect preserves consumer offsets across restarts.
@@ -258,6 +261,7 @@ class TestCrashRecovery:
         else:
             logger.error("failed_to_get_consumer_offsets_after_restart", error=result.stderr)
 
+    @requires_cdc_pipeline
     def test_state_store_recovery(self, cassandra_session):
         """
         Test that Kafka Connect state stores are recovered after crash.
@@ -335,6 +339,7 @@ class TestCrashRecovery:
 
         logger.info("test_state_store_recovery_success")
 
+    @requires_cdc_pipeline
     def test_exactly_once_semantics_after_crash(self, cassandra_session, postgres_conn):
         """
         Test exactly-once semantics are maintained after crash.

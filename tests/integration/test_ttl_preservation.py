@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from cassandra.cluster import Cluster, Session
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import requests
+from .conftest import requires_cdc_pipeline
 
 
 @pytest.fixture(scope="module")
@@ -14,6 +16,8 @@ def cassandra_session() -> Generator[Session, None, None]:
     cluster = Cluster(
         contact_points=["localhost"],
         port=9042,
+        connect_timeout=10,
+        control_connection_timeout=10,
     )
     session = cluster.connect()
 
@@ -35,7 +39,7 @@ def cassandra_session() -> Generator[Session, None, None]:
         """
     )
 
-    session.execute("ALTER TABLE warehouse.sessions WITH cdc = {'enabled': true}")
+    session.execute("ALTER TABLE warehouse.sessions WITH cdc = true")
     session.execute("ALTER TABLE warehouse.sessions WITH default_time_to_live = 0")
 
     yield session
@@ -51,9 +55,10 @@ def postgres_connection() -> Generator[psycopg2.extensions.connection, None, Non
     conn = psycopg2.connect(
         host="localhost",
         port=5432,
-        database="cdc_target",
+        database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
 
     cursor = conn.cursor()
@@ -122,6 +127,7 @@ class TestTTLPreservation:
     3. Expired records are automatically deleted by PostgreSQL trigger
     """
 
+    @requires_cdc_pipeline
     def test_record_with_ttl_has_expiry_timestamp(
         self,
         cassandra_session: Session,
@@ -162,6 +168,7 @@ class TestTTLPreservation:
             time_diff < 60
         ), f"TTL expiry timestamp should be approximately {expected_expiry}, but difference is {time_diff}s"
 
+    @requires_cdc_pipeline
     def test_record_without_ttl_has_null_expiry_timestamp(
         self,
         cassandra_session: Session,
@@ -191,6 +198,7 @@ class TestTTLPreservation:
             row["_ttl_expiry_timestamp"] is None
         ), "TTL expiry timestamp should be NULL for records without TTL"
 
+    @requires_cdc_pipeline
     def test_expired_ttl_record_is_auto_deleted(
         self,
         cassandra_session: Session,
@@ -239,6 +247,7 @@ class TestTTLPreservation:
             row is None
         ), "Record with expired TTL should be deleted by trigger after any INSERT/UPDATE"
 
+    @requires_cdc_pipeline
     def test_ttl_expiry_timestamp_calculation_accuracy(
         self,
         cassandra_session: Session,
@@ -278,6 +287,7 @@ class TestTTLPreservation:
             time_diff < 10
         ), f"TTL expiry calculation should be accurate within 10s, but difference is {time_diff}s"
 
+    @requires_cdc_pipeline
     def test_ttl_update_changes_expiry_timestamp(
         self,
         cassandra_session: Session,
@@ -341,6 +351,7 @@ class TestTTLPreservation:
             abs(actual_diff - expected_diff) < 60
         ), f"Expiry timestamp difference should be approximately {expected_diff}s"
 
+    @requires_cdc_pipeline
     def test_multiple_records_with_different_ttls(
         self,
         cassandra_session: Session,

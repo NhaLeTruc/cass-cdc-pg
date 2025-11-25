@@ -8,13 +8,22 @@ import pytest
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
 from psycopg2.extensions import connection as PgConnection
+import requests
+from .conftest import requires_cdc_pipeline
 
 
 @pytest.fixture
 def cassandra_session() -> Any:
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
-    session = cluster.connect("warehouse")
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
+    session = cluster.connect()
+    session.execute(
+        """
+        CREATE KEYSPACE IF NOT EXISTS warehouse
+        WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+        """
+    )
+    session.set_keyspace("warehouse")
     yield session
     cluster.shutdown()
 
@@ -30,6 +39,7 @@ def postgres_conn() -> PgConnection:
         database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
     yield conn
     conn.close()
@@ -38,6 +48,7 @@ def postgres_conn() -> PgConnection:
 class TestSchemaAddColumn:
     """Test adding a new column to Cassandra table and verifying PostgreSQL schema evolution."""
 
+    @requires_cdc_pipeline
     def test_add_column_appears_in_postgres_within_10s(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -139,6 +150,7 @@ class TestSchemaAddColumn:
         # Cleanup
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_add_multiple_columns_sequentially(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -199,6 +211,7 @@ class TestSchemaAddColumn:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_add_column_with_existing_data(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:

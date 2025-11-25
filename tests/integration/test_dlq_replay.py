@@ -9,13 +9,14 @@ import json
 from cassandra.cluster import Cluster
 import structlog
 
+from .conftest import requires_cdc_pipeline
 logger = structlog.get_logger(__name__)
 
 
 @pytest.fixture(scope="module")
 def cassandra_session():
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
     session = cluster.connect("cdc_test")
     yield session
     cluster.shutdown()
@@ -38,6 +39,7 @@ def postgres_conn():
 class TestDLQReplay:
     """Test DLQ replay functionality."""
 
+    @requires_cdc_pipeline
     def test_dlq_replay_successful_reprocessing(self, postgres_conn):
         """
         Test that DLQ events can be replayed after fixing the issue.
@@ -167,6 +169,7 @@ class TestDLQReplay:
         finally:
             cursor.close()
 
+    @requires_cdc_pipeline
     def test_dlq_replay_batch_processing(self, postgres_conn):
         """
         Test that multiple DLQ events can be replayed in a single batch.
@@ -248,6 +251,7 @@ class TestDLQReplay:
         finally:
             cursor.close()
 
+    @requires_cdc_pipeline
     def test_dlq_query_endpoint(self, postgres_conn):
         """
         Test GET /dlq/records endpoint with filters.
@@ -324,6 +328,7 @@ class TestDLQReplay:
             logger.warning("dlq_query_endpoint_not_available", error=str(e))
             pytest.skip(f"DLQ query endpoint not available: {e}")
 
+    @requires_cdc_pipeline
     def test_dlq_replay_with_validation(self, postgres_conn):
         """
         Test that DLQ replay validates events before reprocessing.
@@ -379,6 +384,7 @@ class TestDLQReplay:
             logger.warning("dlq_replay_validation_endpoint_not_available", error=str(e))
             pytest.skip(f"DLQ replay endpoint not available: {e}")
 
+    @requires_cdc_pipeline
     def test_dlq_metrics_updated_on_replay(self, postgres_conn):
         """
         Test that DLQ metrics are updated when events are replayed.

@@ -2,11 +2,22 @@ import pytest
 import uuid
 import time
 import json
+import requests
 from typing import Generator
 from datetime import datetime
 from confluent_kafka import Producer
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+
+def check_kafka_connectors() -> bool:
+    """Check if required Kafka connectors are deployed."""
+    try:
+        response = requests.get("http://localhost:8083/connectors", timeout=5)
+        connectors = response.json()
+        return "postgres-sink" in connectors
+    except Exception:
+        return False
 
 
 @pytest.fixture(scope="module")
@@ -30,9 +41,10 @@ def postgres_connection() -> Generator[psycopg2.extensions.connection, None, Non
     conn = psycopg2.connect(
         host="localhost",
         port=5432,
-        database="cdc_target",
+        database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
 
     cursor = conn.cursor()
@@ -71,6 +83,10 @@ class TestOutOfOrderEventHandling:
     4. Conflict resolution preserves data consistency
     """
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_newer_event_overwrites_older_event(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -149,6 +165,10 @@ class TestOutOfOrderEventHandling:
             row["_cdc_timestamp_micros"] == newer_timestamp
         ), "Timestamp should reflect newer event"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_older_event_rejected_when_newer_exists(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -232,6 +252,10 @@ class TestOutOfOrderEventHandling:
             row["_cdc_timestamp_micros"] == newer_timestamp
         ), "Timestamp should remain at newer value"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_equal_timestamps_use_event_id_tiebreaker(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -315,6 +339,10 @@ class TestOutOfOrderEventHandling:
             row["email"] == winning_email
         ), f"Event with lexicographically greater event_id ({lexicographically_second_id}) should win tiebreaker"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_out_of_order_sequence_maintains_consistency(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -399,6 +427,10 @@ class TestOutOfOrderEventHandling:
             row["_cdc_timestamp_micros"] == base_timestamp + 3_000_000
         ), "Timestamp should reflect latest event"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_conflict_resolution_with_deletes(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -467,6 +499,10 @@ class TestOutOfOrderEventHandling:
             row["_cdc_timestamp_micros"] == base_timestamp + 2_000_000
         ), "Timestamp should reflect DELETE event"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_metrics_track_rejected_events(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:

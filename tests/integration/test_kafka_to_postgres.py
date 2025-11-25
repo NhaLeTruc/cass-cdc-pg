@@ -2,11 +2,23 @@ import pytest
 import uuid
 import time
 import json
+import requests
 from typing import Generator, Dict, Any
 from datetime import datetime
 from confluent_kafka import Producer
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+
+def check_kafka_connectors() -> bool:
+    """Check if required Kafka connectors are deployed."""
+    try:
+        response = requests.get("http://localhost:8083/connectors", timeout=5)
+        connectors = response.json()
+        # Check if postgres-sink connector exists
+        return "postgres-sink" in connectors
+    except Exception:
+        return False
 
 
 @pytest.fixture(scope="module")
@@ -30,9 +42,10 @@ def postgres_connection() -> Generator[psycopg2.extensions.connection, None, Non
     conn = psycopg2.connect(
         host="localhost",
         port=5432,
-        database="cdc_target",
+        database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
 
     cursor = conn.cursor()
@@ -68,6 +81,10 @@ class TestKafkaToPostgreSQLFlow:
     and written to PostgreSQL with correct transformations.
     """
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_create_event_from_kafka_inserts_into_postgres(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -117,6 +134,10 @@ class TestKafkaToPostgreSQLFlow:
             row["_cdc_timestamp_micros"] == timestamp_micros
         ), "CDC timestamp should be stored"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_update_event_from_kafka_updates_postgres(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -194,6 +215,10 @@ class TestKafkaToPostgreSQLFlow:
             row["_cdc_timestamp_micros"] == update_timestamp
         ), "CDC timestamp should be updated"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_delete_event_from_kafka_marks_deleted_in_postgres(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -264,6 +289,10 @@ class TestKafkaToPostgreSQLFlow:
             row["_cdc_timestamp_micros"] == delete_timestamp
         ), "CDC timestamp should reflect delete time"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_events_with_ttl_set_expiry_timestamp(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -315,6 +344,10 @@ class TestKafkaToPostgreSQLFlow:
         time_diff = abs((actual_expiry - expected_expiry).total_seconds())
         assert time_diff < 5, "TTL expiry timestamp should be approximately correct"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_cdc_timestamp_micros_stored_correctly(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -359,6 +392,10 @@ class TestKafkaToPostgreSQLFlow:
             row["_cdc_timestamp_micros"] == timestamp_micros
         ), "CDC timestamp should match event timestamp"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_multiple_events_processed_in_batch(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:
@@ -408,6 +445,10 @@ class TestKafkaToPostgreSQLFlow:
 
         assert count == 10, f"All 10 records should be inserted, found {count}"
 
+    @pytest.mark.skipif(
+        not check_kafka_connectors(),
+        reason="Kafka connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_invalid_event_routed_to_dlq(
         self, kafka_producer: Producer, postgres_connection: psycopg2.extensions.connection
     ) -> None:

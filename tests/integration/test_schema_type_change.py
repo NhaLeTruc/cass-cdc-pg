@@ -7,13 +7,22 @@ from typing import Any
 import pytest
 from cassandra.cluster import Cluster
 from psycopg2.extensions import connection as PgConnection
+import requests
+from .conftest import requires_cdc_pipeline
 
 
 @pytest.fixture
 def cassandra_session() -> Any:
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
-    session = cluster.connect("warehouse")
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
+    session = cluster.connect()
+    session.execute(
+        """
+        CREATE KEYSPACE IF NOT EXISTS warehouse
+        WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+        """
+    )
+    session.set_keyspace("warehouse")
     yield session
     cluster.shutdown()
 
@@ -29,6 +38,7 @@ def postgres_conn() -> PgConnection:
         database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
     yield conn
     conn.close()
@@ -37,6 +47,7 @@ def postgres_conn() -> PgConnection:
 class TestSchemaTypeChange:
     """Test compatible type changes in Cassandra and verify PostgreSQL updates types correctly."""
 
+    @requires_cdc_pipeline
     def test_int_to_bigint_type_change(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -107,6 +118,7 @@ class TestSchemaTypeChange:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_text_length_expansion(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -160,6 +172,7 @@ class TestSchemaTypeChange:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_nullable_to_non_nullable_handling(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -211,6 +224,7 @@ class TestSchemaTypeChange:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_decimal_precision_changes(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:

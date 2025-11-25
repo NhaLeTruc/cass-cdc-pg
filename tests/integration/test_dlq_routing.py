@@ -8,6 +8,8 @@ from cassandra.cluster import Cluster
 from kafka import KafkaConsumer
 import json
 import structlog
+import requests
+from .conftest import requires_cdc_pipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -15,7 +17,7 @@ logger = structlog.get_logger(__name__)
 @pytest.fixture(scope="module")
 def cassandra_session():
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
     session = cluster.connect("cdc_test")
     yield session
     cluster.shutdown()
@@ -53,6 +55,7 @@ def kafka_consumer():
 class TestDLQRouting:
     """Test DLQ routing after retries are exhausted."""
 
+    @requires_cdc_pipeline
     def test_dlq_routing_after_retries_exhausted(
         self, cassandra_session, postgres_conn, kafka_consumer
     ):
@@ -202,6 +205,7 @@ class TestDLQRouting:
 
         logger.info("test_dlq_routing_success", test_id=test_id)
 
+    @requires_cdc_pipeline
     def test_dlq_event_contains_full_context(self, cassandra_session, postgres_conn):
         """
         Test that DLQ events contain full error context for troubleshooting.
@@ -278,6 +282,7 @@ class TestDLQRouting:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_dlq_table_indexes_exist(self, postgres_conn):
         """
         Test that DLQ table has proper indexes for efficient querying.
@@ -334,6 +339,7 @@ class TestDLQRouting:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_dlq_retention_policy(self, postgres_conn):
         """
         Test that DLQ records have appropriate retention policy.

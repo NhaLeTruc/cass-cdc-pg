@@ -9,13 +9,22 @@ import pytest
 from cassandra.cluster import Cluster
 from kafka import KafkaConsumer
 from psycopg2.extensions import connection as PgConnection
+import requests
+from .conftest import requires_cdc_pipeline
 
 
 @pytest.fixture
 def cassandra_session() -> Any:
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
-    session = cluster.connect("warehouse")
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
+    session = cluster.connect()
+    session.execute(
+        """
+        CREATE KEYSPACE IF NOT EXISTS warehouse
+        WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+        """
+    )
+    session.set_keyspace("warehouse")
     yield session
     cluster.shutdown()
 
@@ -31,6 +40,7 @@ def postgres_conn() -> PgConnection:
         database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
     yield conn
     conn.close()
@@ -54,6 +64,7 @@ def kafka_consumer() -> KafkaConsumer:
 class TestSchemaIncompatible:
     """Test incompatible schema changes are routed to DLQ with SCHEMA_MISMATCH error."""
 
+    @requires_cdc_pipeline
     def test_breaking_type_change_routes_to_dlq(
         self, cassandra_session: Any, postgres_conn: PgConnection, kafka_consumer: KafkaConsumer
     ) -> None:
@@ -80,7 +91,7 @@ class TestSchemaIncompatible:
                 email text,
                 data_field text,
                 created_at timestamp
-            ) WITH cdc = {{'enabled': true}}
+            ) WITH cdc = true
             """
         )
 
@@ -139,6 +150,7 @@ class TestSchemaIncompatible:
         # Cleanup test table
         cassandra_session.execute(f"DROP TABLE IF EXISTS {test_table}")
 
+    @requires_cdc_pipeline
     def test_dlq_record_structure(self, postgres_conn: PgConnection) -> None:
         """
         Verify DLQ records have correct structure with required fields.
@@ -193,6 +205,7 @@ class TestSchemaIncompatible:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_schema_mismatch_error_types(self, postgres_conn: PgConnection) -> None:
         """
         Verify that different types of schema mismatches can be recorded in DLQ.
@@ -227,6 +240,7 @@ class TestSchemaIncompatible:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_dlq_kafka_topic_exists(self, kafka_consumer: KafkaConsumer) -> None:
         """
         Verify that DLQ Kafka topic exists and can be consumed.
@@ -243,6 +257,7 @@ class TestSchemaIncompatible:
         assert partitions is not None, "Could not get partitions for dlq-events topic"
         assert len(partitions) > 0, "dlq-events topic has no partitions"
 
+    @requires_cdc_pipeline
     def test_dlq_event_includes_original_data(self, postgres_conn: PgConnection) -> None:
         """
         Verify that DLQ records include the original event data for debugging.
@@ -286,6 +301,7 @@ class TestSchemaIncompatible:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_dlq_retention_and_indexing(self, postgres_conn: PgConnection) -> None:
         """
         Verify that DLQ table has appropriate indexes for efficient querying.

@@ -1,11 +1,23 @@
 import pytest
 import uuid
 import time
+import requests
 from typing import Generator
 from datetime import datetime
 from cassandra.cluster import Cluster, Session
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+
+def check_cdc_pipeline_ready() -> bool:
+    """Check if full CDC pipeline is deployed and ready."""
+    try:
+        response = requests.get("http://localhost:8083/connectors", timeout=5)
+        connectors = response.json()
+        # Need both cassandra-source and postgres-sink for end-to-end tests
+        return "cassandra-source" in connectors and "postgres-sink" in connectors
+    except Exception:
+        return False
 
 
 @pytest.fixture(scope="module")
@@ -14,6 +26,8 @@ def cassandra_session() -> Generator[Session, None, None]:
     cluster = Cluster(
         contact_points=["localhost"],
         port=9042,
+        connect_timeout=10,
+        control_connection_timeout=10,
     )
     session = cluster.connect()
 
@@ -36,7 +50,7 @@ def cassandra_session() -> Generator[Session, None, None]:
         """
     )
 
-    session.execute("ALTER TABLE warehouse.users WITH cdc = {'enabled': true}")
+    session.execute("ALTER TABLE warehouse.users WITH cdc = true")
 
     yield session
 
@@ -51,9 +65,10 @@ def postgres_connection() -> Generator[psycopg2.extensions.connection, None, Non
     conn = psycopg2.connect(
         host="localhost",
         port=5432,
-        database="cdc_target",
+        database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
 
     cursor = conn.cursor()
@@ -90,6 +105,10 @@ class TestEndToEndReplication:
     Cassandra → Debezium → Kafka → JDBC Sink → PostgreSQL
     """
 
+    @pytest.mark.skipif(
+        not check_cdc_pipeline_ready(),
+        reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_insert_operation_replicates_within_5_seconds(
         self,
         cassandra_session: Session,
@@ -127,6 +146,10 @@ class TestEndToEndReplication:
         assert row["email"] == email, "Email should match"
         assert row["_cdc_deleted"] is False, "Record should not be marked as deleted"
 
+    @pytest.mark.skipif(
+        not check_cdc_pipeline_ready(),
+        reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_update_operation_replicates_within_5_seconds(
         self,
         cassandra_session: Session,
@@ -173,6 +196,10 @@ class TestEndToEndReplication:
         assert row is not None, "Record should exist in PostgreSQL"
         assert row["email"] == new_email, "Email should be updated"
 
+    @pytest.mark.skipif(
+        not check_cdc_pipeline_ready(),
+        reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_delete_operation_replicates_within_5_seconds(
         self,
         cassandra_session: Session,
@@ -216,6 +243,10 @@ class TestEndToEndReplication:
         assert row is not None, "Record should still exist (soft delete)"
         assert row["_cdc_deleted"] is True, "Record should be marked as deleted"
 
+    @pytest.mark.skipif(
+        not check_cdc_pipeline_ready(),
+        reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_sequence_of_operations_all_replicate_correctly(
         self,
         cassandra_session: Session,
@@ -287,6 +318,10 @@ class TestEndToEndReplication:
             delete_timestamp > update_timestamp
         ), "Delete timestamp should be greater than update timestamp"
 
+    @pytest.mark.skipif(
+        not check_cdc_pipeline_ready(),
+        reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_bulk_insert_replicates_all_records(
         self,
         cassandra_session: Session,
@@ -343,6 +378,10 @@ class TestEndToEndReplication:
         ), f"Expected {num_records} records, found {final_count}"
         assert elapsed_time < max_wait, f"Bulk replication took {elapsed_time:.2f}s"
 
+    @pytest.mark.skipif(
+        not check_cdc_pipeline_ready(),
+        reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
+    )
     def test_latency_meets_p95_requirement(
         self,
         cassandra_session: Session,

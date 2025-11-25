@@ -1,11 +1,22 @@
 import pytest
 import uuid
 import time
+import requests
 from typing import Generator, Dict, Any
 from datetime import datetime
 from cassandra.cluster import Cluster, Session
 from confluent_kafka import Consumer, KafkaException
 import json
+
+
+def check_cassandra_connector() -> bool:
+    """Check if Cassandra source connector is deployed."""
+    try:
+        response = requests.get("http://localhost:8083/connectors", timeout=5)
+        connectors = response.json()
+        return "cassandra-source" in connectors
+    except Exception:
+        return False
 
 
 @pytest.fixture(scope="module")
@@ -14,6 +25,8 @@ def cassandra_session() -> Generator[Session, None, None]:
     cluster = Cluster(
         contact_points=["localhost"],
         port=9042,
+        connect_timeout=10,
+        control_connection_timeout=10,
     )
     session = cluster.connect()
 
@@ -36,7 +49,7 @@ def cassandra_session() -> Generator[Session, None, None]:
         """
     )
 
-    session.execute("ALTER TABLE warehouse.users WITH cdc = {'enabled': true}")
+    session.execute("ALTER TABLE warehouse.users WITH cdc = true")
 
     yield session
 
@@ -72,6 +85,10 @@ class TestCassandraToKafkaFlow:
     and published to the correct Kafka topic.
     """
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_insert_in_cassandra_produces_create_event_in_kafka(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:
@@ -99,6 +116,10 @@ class TestCassandraToKafkaFlow:
         assert event["after"]["username"] == username, "Event should contain username"
         assert event["after"]["email"] == email, "Event should contain email"
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_update_in_cassandra_produces_update_event_in_kafka(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:
@@ -136,6 +157,10 @@ class TestCassandraToKafkaFlow:
         assert event["before"] is not None, "UPDATE event should have 'before' data"
         assert event["before"]["email"] == email, "Before data should have old email"
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_delete_in_cassandra_produces_delete_event_in_kafka(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:
@@ -170,6 +195,10 @@ class TestCassandraToKafkaFlow:
         assert event["before"]["id"] == str(user_id), "Before data should contain user_id"
         assert event["after"] is None, "DELETE event should have null 'after' data"
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_event_contains_timestamp_micros(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:
@@ -202,6 +231,10 @@ class TestCassandraToKafkaFlow:
             before_insert_micros <= event["timestamp_micros"] <= after_insert_micros
         ), "timestamp_micros should be within test execution timeframe"
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_event_contains_schema_version(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:
@@ -226,6 +259,10 @@ class TestCassandraToKafkaFlow:
         assert isinstance(event["schema_version"], int), "schema_version must be integer"
         assert event["schema_version"] >= 1, "schema_version must be at least 1"
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_event_contains_event_id(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:
@@ -250,6 +287,10 @@ class TestCassandraToKafkaFlow:
         assert isinstance(event["event_id"], str), "event_id must be string"
         assert len(event["event_id"]) > 0, "event_id must not be empty"
 
+    @pytest.mark.skipif(
+        not check_cassandra_connector(),
+        reason="Cassandra connector not deployed - run 'make deploy-connectors' first"
+    )
     def test_multiple_inserts_produce_events_in_order(
         self, cassandra_session: Session, kafka_consumer: Consumer
     ) -> None:

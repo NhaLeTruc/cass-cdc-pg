@@ -7,13 +7,22 @@ from typing import Any
 import pytest
 from cassandra.cluster import Cluster
 from psycopg2.extensions import connection as PgConnection
+import requests
+from .conftest import requires_cdc_pipeline
 
 
 @pytest.fixture
 def cassandra_session() -> Any:
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
-    session = cluster.connect("warehouse")
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
+    session = cluster.connect()
+    session.execute(
+        """
+        CREATE KEYSPACE IF NOT EXISTS warehouse
+        WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+        """
+    )
+    session.set_keyspace("warehouse")
     yield session
     cluster.shutdown()
 
@@ -29,6 +38,7 @@ def postgres_conn() -> PgConnection:
         database="warehouse",
         user="cdc_user",
         password="cdc_password",
+        connect_timeout=10,
     )
     yield conn
     conn.close()
@@ -37,6 +47,7 @@ def postgres_conn() -> PgConnection:
 class TestSchemaDropColumn:
     """Test dropping a column from Cassandra table and verifying PostgreSQL handles it gracefully."""
 
+    @requires_cdc_pipeline
     def test_drop_column_handled_gracefully(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -113,6 +124,7 @@ class TestSchemaDropColumn:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_drop_column_existing_data_preserved(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:
@@ -193,6 +205,7 @@ class TestSchemaDropColumn:
 
         cursor.close()
 
+    @requires_cdc_pipeline
     def test_drop_non_null_column_graceful_handling(
         self, cassandra_session: Any, postgres_conn: PgConnection
     ) -> None:

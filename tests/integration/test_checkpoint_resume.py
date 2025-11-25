@@ -6,6 +6,8 @@ from typing import List
 from datetime import datetime
 from cassandra.cluster import Cluster
 import psycopg2
+import requests
+from .conftest import requires_cdc_pipeline
 
 
 class TestCheckpointResume:
@@ -19,8 +21,15 @@ class TestCheckpointResume:
     @pytest.fixture(scope="function")
     def cassandra_connection(self):
         """Provide Cassandra connection."""
-        cluster = Cluster(["localhost"], port=9042)
-        session = cluster.connect("warehouse")
+        cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
+        session = cluster.connect()
+        session.execute(
+            """
+            CREATE KEYSPACE IF NOT EXISTS warehouse
+            WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1}
+            """
+        )
+        session.set_keyspace("warehouse")
         yield session
         cluster.shutdown()
 
@@ -30,13 +39,15 @@ class TestCheckpointResume:
         conn = psycopg2.connect(
             host="localhost",
             port=5432,
-            database="cdc_target",
+            database="warehouse",
             user="cdc_user",
             password="cdc_password",
+            connect_timeout=10,
         )
         yield conn
         conn.close()
 
+    @requires_cdc_pipeline
     def test_checkpoint_resume_after_restart_no_data_loss(
         self,
         cassandra_connection,
@@ -127,6 +138,7 @@ class TestCheckpointResume:
             f"Data loss detected!"
         )
 
+    @requires_cdc_pipeline
     def test_checkpoint_resume_no_duplicates(
         self,
         cassandra_connection,
@@ -177,6 +189,7 @@ class TestCheckpointResume:
                 f"Duplicate detected!"
             )
 
+    @requires_cdc_pipeline
     def test_checkpoint_persisted_in_database(
         self,
         cassandra_connection,
@@ -215,6 +228,7 @@ class TestCheckpointResume:
             "No checkpoints found in _cdc_checkpoints table"
         )
 
+    @requires_cdc_pipeline
     def test_kafka_offset_tracking(
         self,
         cassandra_connection,
@@ -259,6 +273,7 @@ class TestCheckpointResume:
         assert kafka_offset >= 0, "Kafka offset should be >= 0"
         assert kafka_partition >= 0, "Kafka partition should be >= 0"
 
+    @requires_cdc_pipeline
     def test_resume_from_specific_checkpoint(
         self,
         cassandra_connection,

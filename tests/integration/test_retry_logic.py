@@ -8,13 +8,14 @@ from cassandra.cluster import Cluster
 import structlog
 import re
 
+from .conftest import requires_cdc_pipeline
 logger = structlog.get_logger(__name__)
 
 
 @pytest.fixture(scope="module")
 def cassandra_session():
     """Create Cassandra session."""
-    cluster = Cluster(["localhost"], port=9042)
+    cluster = Cluster(["localhost"], port=9042, connect_timeout=10, control_connection_timeout=10)
     session = cluster.connect("cdc_test")
     yield session
     cluster.shutdown()
@@ -37,6 +38,7 @@ def postgres_conn():
 class TestRetryLogic:
     """Test retry logic with exponential backoff."""
 
+    @requires_cdc_pipeline
     def test_retry_with_exponential_backoff(self, cassandra_session, postgres_conn, tmp_path):
         """
         Test that CDC pipeline retries with exponential backoff when PostgreSQL is down.
@@ -159,6 +161,7 @@ class TestRetryLogic:
 
         logger.info("test_retry_success", test_id=test_id, email=email)
 
+    @requires_cdc_pipeline
     def test_retry_behavior_under_intermittent_failures(self, cassandra_session, postgres_conn):
         """
         Test retry behavior when PostgreSQL has intermittent connectivity issues.
@@ -221,6 +224,7 @@ class TestRetryLogic:
 
         logger.info("test_intermittent_success", test_id=test_id)
 
+    @requires_cdc_pipeline
     def test_retry_metrics_recorded(self, cassandra_session):
         """
         Test that retry attempts are recorded in Prometheus metrics.
