@@ -62,7 +62,7 @@ start: ## Start all services with Docker Compose
 	@$(MAKE) health
 
 stop: ## Stop all services
-	docker compose down
+	docker compose down --volumes --remove-orphans
 
 restart: ## Restart all services
 	docker compose restart
@@ -77,11 +77,13 @@ health: ## Check health of all services
 	@echo "Checking service health..."
 	@docker compose ps
 	@echo "\nCassandra:"
-	@docker compose exec -T cassandra nodetool status || echo "Cassandra not ready"
+	@bash scripts/health-check-cassandra.sh
+	@echo "\nVault:"
+	@bash scripts/health-check-vault.sh
 	@echo "\nPostgreSQL:"
 	@docker compose exec -T postgres pg_isready || echo "PostgreSQL not ready"
 	@echo "\nKafka Connect:"
-	@curl -s http://localhost:8083/connectors || echo "Kafka Connect not ready"
+	@bash scripts/health-check-kafka-connect.sh
 
 generate-data: ## Generate test data
 	poetry run python scripts/generate_test_data.py --count 10000

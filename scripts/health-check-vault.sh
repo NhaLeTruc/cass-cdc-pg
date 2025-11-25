@@ -10,8 +10,8 @@ RETRY_INTERVAL="${RETRY_INTERVAL:-2}"
 echo "Checking Vault health at ${VAULT_ADDR}..."
 
 for i in $(seq 1 "$MAX_RETRIES"); do
-    if docker exec cdc-vault vault status > /dev/null 2>&1; then
-        SEAL_STATUS=$(docker exec cdc-vault vault status -format=json 2>/dev/null | grep -o '"sealed":[^,]*' | cut -d':' -f2)
+    if docker exec -e VAULT_ADDR=http://0.0.0.0:8200 cdc-vault vault status > /dev/null 2>&1; then
+        SEAL_STATUS=$(docker exec -e VAULT_ADDR=http://0.0.0.0:8200 cdc-vault vault status -format=json 2>/dev/null | grep -o '"sealed":[^,]*' | cut -d':' -f2 | tr -d ' ')
         if [ "$SEAL_STATUS" = "false" ]; then
             echo "✓ Vault is healthy and unsealed"
             exit 0

@@ -116,6 +116,10 @@ wait_for_services() {
     echo "Waiting for services to become healthy..."
     echo ""
 
+    # Export health check configuration
+    export MAX_RETRIES=60
+    export RETRY_INTERVAL=2
+
     local services=("cassandra" "postgres" "kafka" "vault")
     local service_ready=()
 
@@ -138,7 +142,7 @@ deploy_connectors() {
     echo "Deploying Kafka Connect connectors..."
 
     local connect_url="http://localhost:8083"
-    local max_retries=30
+    local max_retries=60
     local retry_interval=2
 
     echo "  Waiting for Kafka Connect to be ready..."
@@ -149,8 +153,9 @@ deploy_connectors() {
         fi
 
         if [ "$i" -eq "$max_retries" ]; then
-            echo "  ✗ Kafka Connect failed to start after ${max_retries} attempts"
-            return 1
+            echo "  ⚠ Warning: Kafka Connect not ready after ${max_retries} attempts"
+            echo "    You can deploy connectors later with: make deploy-connectors"
+            return 0
         fi
 
         echo "    Attempt $i/$max_retries: waiting ${retry_interval}s..."
