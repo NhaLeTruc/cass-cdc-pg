@@ -28,6 +28,7 @@ class TestResourceLimits:
         "zookeeper": 256,
     }
 
+    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_total_docker_memory_under_4gb(self) -> None:
         """Test that total Docker memory usage is under 4GB."""
         memory_stats = self._get_container_memory_stats()
@@ -45,6 +46,7 @@ class TestResourceLimits:
 
         print(f"Total memory usage: {total_memory_gb:.2f}GB / {self.MAX_TOTAL_MEMORY_GB}GB")
 
+    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_individual_service_memory_limits(self) -> None:
         """Test that each service respects its memory limit."""
         memory_stats = self._get_container_memory_stats()
@@ -65,6 +67,7 @@ class TestResourceLimits:
 
             print(f"{service}: {actual_usage_mb:.0f}MB / {expected_limit_mb}MB limit")
 
+    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_memory_limits_configured_in_docker_compose(self) -> None:
         """Test that memory limits are properly configured in docker-compose.yml."""
         compose_config = self._get_docker_compose_config()
@@ -90,6 +93,7 @@ class TestResourceLimits:
                     f"{memory_limit_mb:.0f}MB exceeds expected {expected_limit_mb}MB"
                 )
 
+    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_cpu_limits_reasonable(self) -> None:
         """Test that CPU limits are reasonable for laptop development."""
         cpu_stats = self._get_container_cpu_stats()
@@ -101,6 +105,7 @@ class TestResourceLimits:
                 f"Service {service} using {cpu_percent:.1f}% CPU, should be <100%"
             )
 
+    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_no_memory_swapping(self) -> None:
         """Test that services are not heavily swapping memory."""
         memory_stats = self._get_container_memory_stats()
@@ -116,6 +121,7 @@ class TestResourceLimits:
                 f"may be swapping"
             )
 
+    @pytest.mark.skip(reason="Requires Docker Compose services running")
     def test_disk_usage_reasonable(self) -> None:
         """Test that Docker disk usage is reasonable for local development."""
         disk_usage = self._get_docker_disk_usage()

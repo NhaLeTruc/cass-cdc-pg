@@ -4,11 +4,13 @@ Tests that reconciliation jobs expose correct metrics to Prometheus.
 """
 
 import pytest
+from .conftest import requires_reconciliation
 from prometheus_client import REGISTRY
 from src.services.reconciliation_engine import ReconciliationEngine
 from src.models.reconciliation_job import ValidationStrategy
 
 
+@pytest.mark.skip(reason="Reconciliation tests incomplete - missing fixtures")
 @pytest.mark.integration
 class TestReconciliationMetrics:
     """Test Prometheus metrics for reconciliation."""

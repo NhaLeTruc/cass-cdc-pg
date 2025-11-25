@@ -4,6 +4,8 @@ Pytest configuration and shared fixtures for integration tests.
 import pytest
 import requests
 from typing import Generator
+from cassandra.cluster import Cluster, Session
+import psycopg2
 
 
 def check_kafka_connectors() -> bool:
@@ -37,6 +39,45 @@ def check_cdc_pipeline_ready() -> bool:
         return False
 
 
+def check_cassandra_available() -> bool:
+    """Check if Cassandra is available."""
+    try:
+        cluster = Cluster(
+            contact_points=["localhost"],
+            port=9042,
+            connect_timeout=5,
+            control_connection_timeout=5,
+        )
+        session = cluster.connect()
+        session.shutdown()
+        cluster.shutdown()
+        return True
+    except Exception:
+        return False
+
+
+def check_postgres_available() -> bool:
+    """Check if PostgreSQL is available."""
+    try:
+        conn = psycopg2.connect(
+            host="localhost",
+            port=5432,
+            database="warehouse",
+            user="cdc_user",
+            password="cdc_password",
+            connect_timeout=5,
+        )
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def check_reconciliation_infrastructure() -> bool:
+    """Check if reconciliation infrastructure (Cassandra + PostgreSQL) is available."""
+    return check_cassandra_available() and check_postgres_available()
+
+
 # Mark for skipping tests that require connectors
 requires_connectors = pytest.mark.skipif(
     not check_kafka_connectors(),
@@ -52,3 +93,43 @@ requires_cdc_pipeline = pytest.mark.skipif(
     not check_cdc_pipeline_ready(),
     reason="CDC pipeline connectors not deployed - run 'make deploy-connectors' first"
 )
+
+requires_reconciliation = pytest.mark.skipif(
+    not check_reconciliation_infrastructure(),
+    reason="Reconciliation infrastructure (Cassandra + PostgreSQL) not available"
+)
+
+
+# Shared fixtures for Cassandra and PostgreSQL connections
+@pytest.fixture(scope="module")
+def cassandra_session() -> Generator[Session, None, None]:
+    """Provide shared Cassandra session for tests."""
+    cluster = Cluster(
+        contact_points=["localhost"],
+        port=9042,
+        connect_timeout=10,
+        control_connection_timeout=10,
+    )
+    session = cluster.connect()
+    yield session
+    session.shutdown()
+    cluster.shutdown()
+
+
+@pytest.fixture(scope="module")
+def postgres_connection() -> Generator[psycopg2.extensions.connection, None, None]:
+    """Provide shared PostgreSQL connection for tests."""
+    # Register UUID adapter for psycopg2
+    from psycopg2.extras import register_uuid
+    register_uuid()
+
+    conn = psycopg2.connect(
+        host="localhost",
+        port=5432,
+        database="warehouse",
+        user="cdc_user",
+        password="cdc_password",
+        connect_timeout=10,
+    )
+    yield conn
+    conn.close()
