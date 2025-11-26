@@ -126,21 +126,21 @@ class ReconciliationEngine:
             )
             cdc_reconciliation_cassandra_rows.labels(table=table_name).set(cassandra_count)
             cdc_reconciliation_postgres_rows.labels(table=table_name).set(postgres_count)
-            cdc_cdc_reconciliation_mismatches_total.labels(
+            cdc_reconciliation_mismatches_total.labels(
                 table=table_name,
                 type="ROW_COUNT_DIFF"
             ).inc(mismatch_count)
 
             # Record duration
             duration = (job.completed_at - job.started_at).total_seconds()
-            cdc_cdc_reconciliation_duration_seconds.labels(table=table_name).observe(duration)
+            cdc_reconciliation_duration_seconds.labels(table=table_name).observe(duration)
 
             # Persist job if repository available
             if self.reconciliation_repo:
                 job = self.reconciliation_repo.create_job(job)
 
             # Increment completed jobs counter
-            cdc_cdc_reconciliation_jobs_completed_total.labels(
+            cdc_reconciliation_jobs_completed_total.labels(
                 table=table_name,
                 status="COMPLETED"
             ).inc()

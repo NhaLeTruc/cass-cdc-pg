@@ -4,9 +4,12 @@ Service for sending reconciliation alerts to Prometheus/AlertManager.
 """
 
 import httpx
+import logging
 from typing import Optional
 from src.models.reconciliation_job import ReconciliationJob
 from src.repositories.reconciliation_repository import ReconciliationRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AlertService:
@@ -203,7 +206,7 @@ class AlertService:
 
         except Exception as e:
             # Log error but don't fail reconciliation
-            print(f"Failed to push alert to Prometheus: {e}")
+            logger.error(f"Failed to push alert to Prometheus: {e}", exc_info=True)
             return False
 
     async def send_test_alert(self, table: str = "test_table") -> bool:

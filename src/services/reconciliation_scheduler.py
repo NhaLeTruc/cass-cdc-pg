@@ -4,6 +4,7 @@ Scheduler for automated hourly reconciliation jobs using APScheduler.
 """
 
 import asyncio
+import logging
 from typing import List, Optional
 from datetime import datetime
 
@@ -17,6 +18,8 @@ from src.repositories.postgresql_repository import PostgreSQLRepository
 from src.repositories.reconciliation_repository import ReconciliationRepository
 from src.services.reconciliation_engine import ReconciliationEngine
 from src.services.alert_service import AlertService
+
+logger = logging.getLogger(__name__)
 
 
 class ReconciliationScheduler:
@@ -78,11 +81,11 @@ class ReconciliationScheduler:
     async def start(self) -> None:
         """Start the reconciliation scheduler."""
         if not self.enabled:
-            print("Reconciliation scheduler is disabled")
+            logger.info("Reconciliation scheduler is disabled")
             return
 
         if self._running:
-            print("Reconciliation scheduler already running")
+            logger.warning("Reconciliation scheduler already running")
             return
 
         # Schedule reconciliation jobs
@@ -100,7 +103,7 @@ class ReconciliationScheduler:
         self.scheduler.start()
         self._running = True
 
-        print(
+        logger.info(
             f"Reconciliation scheduler started: "
             f"interval={self.interval_minutes}m, "
             f"tables={len(self.tables)}"
@@ -114,7 +117,7 @@ class ReconciliationScheduler:
         self.scheduler.shutdown(wait=True)
         self._running = False
 
-        print("Reconciliation scheduler stopped")
+        logger.info("Reconciliation scheduler stopped")
 
     async def manual_trigger_reconciliation(
         self,
@@ -170,7 +173,7 @@ class ReconciliationScheduler:
             job_type: Job type (scheduled or manual)
         """
         try:
-            print(
+            logger.info(
                 f"Running {job_type.value} reconciliation for {table_name} "
                 f"at {datetime.now()}"
             )
@@ -195,15 +198,16 @@ class ReconciliationScheduler:
                 if drift >= self.alert_service.warning_threshold:
                     await self.alert_service.send_reconciliation_alert(job)
 
-            print(
+            logger.info(
                 f"Reconciliation completed for {table_name}: "
                 f"drift={job.drift_percentage}%, "
                 f"mismatches={job.mismatch_count}"
             )
 
         except Exception as e:
-            print(
-                f"Reconciliation failed for {table_name}: {e}"
+            logger.error(
+                f"Reconciliation failed for {table_name}: {e}",
+                exc_info=True
             )
 
     def is_running(self) -> bool:
@@ -237,7 +241,7 @@ class ReconciliationScheduler:
         """
         job_id = f"reconciliation_{table_name}"
         self.scheduler.pause_job(job_id)
-        print(f"Paused reconciliation for {table_name}")
+        logger.info(f"Paused reconciliation for {table_name}")
 
     async def resume_table_reconciliation(self, table_name: str) -> None:
         """Resume reconciliation for a specific table.
@@ -247,4 +251,4 @@ class ReconciliationScheduler:
         """
         job_id = f"reconciliation_{table_name}"
         self.scheduler.resume_job(job_id)
-        print(f"Resumed reconciliation for {table_name}")
+        logger.info(f"Resumed reconciliation for {table_name}")
