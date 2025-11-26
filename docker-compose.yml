@@ -103,6 +103,36 @@ services:
         limits:
           memory: 1536m
 
+  # Debezium Server for Cassandra CDC
+  debezium-server:
+    image: quay.io/debezium/server:3.0
+    container_name: cdc-debezium-server
+    depends_on:
+      - kafka
+      - schema-registry
+      - cassandra
+    ports:
+      - "8000:8000"  # HTTP monitoring endpoint
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - ./docker/debezium-server/config/application.properties:/debezium/conf/application.properties
+      - ./docker/debezium-server/config/application.properties:/debezium/config/application.properties
+      - debezium-offsets:/debezium/offsets
+      - cassandra-data:/debezium/cassandra:ro
+    networks:
+      - cdc-network
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/q/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   # Cassandra
   cassandra:
     build:
@@ -325,3 +355,4 @@ volumes:
   postgres-data:
   prometheus-data:
   grafana-data:
+  debezium-offsets:

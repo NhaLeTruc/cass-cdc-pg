@@ -32,8 +32,7 @@ echo "[Debezium Agent] Starting Debezium Cassandra CDC Agent..."
 # Start the Debezium agent
 cd /opt/debezium
 
-java -jar debezium-cassandra-agent.jar \
-    --config-file=conf/debezium-cassandra.properties \
-    --log-level=INFO
+# The Cassandra connector expects the properties file as a direct argument
+java -jar debezium-cassandra-agent.jar conf/debezium-cassandra.properties
 
 echo "[Debezium Agent] Agent stopped"

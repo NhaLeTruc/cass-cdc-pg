@@ -8,7 +8,8 @@ RUN apt-get update && \
 # Enable CDC in Cassandra configuration
 RUN echo "cdc_enabled: true" >> /etc/cassandra/cassandra.yaml && \
     echo "cdc_raw_directory: /var/lib/cassandra/cdc_raw" >> /etc/cassandra/cassandra.yaml && \
-    mkdir -p /var/lib/cassandra/cdc_raw
+    mkdir -p /var/lib/cassandra/cdc_raw && \
+    mkdir -p /var/lib/cassandra/cdc_offsets
 
 # Download Debezium Cassandra 4 connector agent (2.7.0.Final)
 # This is a standalone agent that monitors Cassandra CDC and publishes to Kafka
@@ -22,6 +23,7 @@ RUN mkdir -p /opt/debezium/conf
 
 # Copy Debezium agent configuration
 COPY debezium-cassandra.properties /opt/debezium/conf/
+COPY cassandra-driver.conf /opt/debezium/conf/
 COPY start-debezium-agent.sh /opt/debezium/
 
 # Copy Cassandra initialization scripts
