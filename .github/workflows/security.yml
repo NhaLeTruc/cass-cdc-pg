@@ -5,8 +5,8 @@ on:
     branches: [ main, develop ]
   push:
     branches: [ main, develop ]
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
+  # schedule:
+  #   - cron: '0 0 * * 0'  # Weekly on Sunday
 
 jobs:
   security:
